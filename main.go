@@ -21,6 +21,7 @@ import (
 	_ "github.com/pgaskin/lithiumpatch/patches/dictionary"
 	_ "github.com/pgaskin/lithiumpatch/patches/extrafonts"
 	_ "github.com/pgaskin/lithiumpatch/patches/minsize"
+	_ "github.com/pgaskin/lithiumpatch/patches/moretoolbaractions"
 	_ "github.com/pgaskin/lithiumpatch/patches/percentage"
 	_ "github.com/pgaskin/lithiumpatch/patches/seriesmeta"
 
