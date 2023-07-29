@@ -6,6 +6,7 @@ import (
 
 	"github.com/pgaskin/lithiumpatch/patches/internal/patchdef"
 
+	_ "github.com/pgaskin/lithiumpatch/patches/internal/cleanupunused"
 	_ "github.com/pgaskin/lithiumpatch/patches/internal/nofeedback"
 	_ "github.com/pgaskin/lithiumpatch/patches/internal/signature"
 	_ "github.com/pgaskin/lithiumpatch/patches/internal/version"
