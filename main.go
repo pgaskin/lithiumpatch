@@ -38,7 +38,7 @@ var (
 
 	AddFonts = pflag.StringSlice("add-fonts", nil, "Add extra TTF fonts from a directory (Regular/Roman, Bold, Italic, and BoldItalic variants should be provided) (can be specified multiple times)")
 
-	Apktool   = pflag.String("apktool", "lib/apktool-2.6.1.jar", "Path to apktool.jar (2.4.1 - 2.6.1)")
+	Apktool   = pflag.String("apktool", "lib/apktool-2.8.1.jar", "Path to apktool.jar (2.4.1 - 2.6.1)")
 	Apksigner = pflag.String("apksigner", "lib/apksigner-0.8.jar", "Path to apksigner.jar (0.8 or later)")
 	Zipalign  = pflag.String("zipalign", "zipalign", "zipalign executable (will search PATH)")
 	Keytool   = pflag.String("keytool", "keytool", "keytool executable (will search PATH)")
@@ -163,6 +163,7 @@ func run(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx,
 			*Keytool, "-genkeypair", "-v",
 			"-keystore", *Keystore,
+			"-keyalg", "RSA",
 			"-storepass", *KeystorePassphrase,
 			"-alias", *KeystoreAlias,
 			"-dname", "CN=lithiumpatch, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=CA",
@@ -182,6 +183,7 @@ func run(ctx context.Context) error {
 	cmd := exec.Command(
 		"keytool", "-list", "-v",
 		"-keystore", *Keystore,
+		"-keyalg", "RSA",
 		"-storepass", *KeystorePassphrase,
 		"-alias", *KeystoreAlias,
 	)

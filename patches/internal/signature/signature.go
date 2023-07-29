@@ -10,12 +10,12 @@ func init() {
 			InMethod("checkIfNecessary(Landroid/app/Activity;)V",
 				ReplaceString(
 					FixIndent("\n"+`
-						invoke-virtual {v1, v3, v2}, Landroid/content/pm/PackageManager;->checkSignatures(Ljava/lang/String;Ljava/lang/String;)I
+						invoke-virtual {v1, v2, v3}, Landroid/content/pm/PackageManager;->checkSignatures(Ljava/lang/String;Ljava/lang/String;)I
 
-						move-result v3
+						move-result v2
 					`),
 					FixIndent("\n"+`
-						const/4 v3, 0x0
+						const/4 v2, 0x0
 					`),
 				),
 			),

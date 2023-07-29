@@ -17,7 +17,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 
 ## Usage
 
-1. Download the Lithium 0.24.1 APK from [here](https://www.apkmirror.com/apk/faultexception/lithium-epub-reader/lithium-epub-reader-0-24-1-release/lithium-epub-reader-0-24-1-android-apk-download/download/) or extract it from your device.
+1. Download the Lithium 0.24.5 APK from [here](https://www.apkmirror.com/apk/faultexception/lithium-epub-reader/lithium-epub-reader-0-24-5-release/lithium-epub-reader-0-24-5-android-apk-download/) or extract it from your device.
 2. Install JRE 1.8 or newer.
 3. Install Go 1.18 or newer.
 4. Install zipalign (part of the Android build tools).
@@ -41,3 +41,5 @@ options:
   -q, --quiet                        Do not show the diff
       --help                         Show this help text
 ```
+
+**Note:** If you get an error from apktool about `No resource identifier found for attribute 'preserveLegacyExternalStorage'`, run `java -jar lib/apktool-2.8.1.jar empty-framework-dir`.
