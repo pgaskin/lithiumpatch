@@ -12,6 +12,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 - Smaller minimum font size.
 - Additional information in the reader footer.
 - Series metadata support.
+- Series section in library drawer.
 - Increased number of visible actions for the reader toolbar.
 - Support for inverted portrait/landscape rotation.
 
