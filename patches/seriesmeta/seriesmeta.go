@@ -3,9 +3,6 @@
 package seriesmeta
 
 import (
-	"fmt"
-	"regexp"
-
 	. "github.com/pgaskin/lithiumpatch/patches/internal/patchdef"
 )
 
@@ -14,13 +11,19 @@ import (
 // TODO: refactor this... it might be easier just to run through the OPF twice and have an entirely separate parsing function for series metadata
 
 func init() {
-	var wrapContentID string
 	Register("seriesmeta",
 		// DISPLAY
+		PatchFile("res/values/ids.xml",
+			ReplaceStringPrepend(
+				"\n"+`</resources>`,
+				"\n"+`    <item type="id" name="series" />`,
+			),
+		),
+		DefineR("smali/com/faultexception/reader", "id", "series"),
 		PatchFile("res/layout/books_grid_item.xml",
 			ReplaceStringAppend(
 				"\n"+`            <TextView android:textSize="12.0sp" android:textColor="#ffffffff" android:ellipsize="end" android:id="@id/creator" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
-				"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:ellipsize="end" android:id="@+id/wrap_content" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif"/>`,
+				"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:ellipsize="end" android:id="@id/series" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif"/>`,
 			),
 		),
 		PatchFile("res/layout/books_list_item.xml",
@@ -30,7 +33,7 @@ func init() {
 			),
 			ReplaceStringAppend(
 				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/creator" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
-				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/wrap_content" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
+				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/series" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
 			),
 		),
 		PatchFile("res/layout-v17/books_list_item.xml",
@@ -40,7 +43,7 @@ func init() {
 			),
 			ReplaceStringAppend(
 				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/creator" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
-				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/wrap_content" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
+				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/series" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
 			),
 		),
 		PatchFile("res/xml/preferences.xml",
@@ -59,16 +62,6 @@ func init() {
 				`"creator ASC, series ASC, LENGTH(series_index) ASC, series_index ASC"`,
 			),
 		),
-		PatchFile("smali/com/faultexception/reader/R$id.smali",
-			StringPatcherFunc(func(smali string) (string, error) {
-				m := regexp.MustCompile(`\.field public static final wrap_content:I = (0x[a-f0-9A-F]+)`).FindStringSubmatch(smali) // just an arbitrary id so we don't need a new one
-				if len(m) != 2 {
-					return smali, fmt.Errorf("could not find R.id.wrap_content")
-				}
-				wrapContentID = m[1]
-				return smali, nil
-			}),
-		),
 		PatchFile("smali/com/faultexception/reader/BooksAdapter$ViewHolder.smali",
 			ReplaceStringAppend(
 				"\n"+`.field public creatorView:Landroid/widget/TextView;`,
@@ -76,9 +69,6 @@ func init() {
 			),
 			InMethod("<init>(Lcom/faultexception/reader/BooksAdapter;Landroid/view/View;)V",
 				StringPatcherFunc(func(smali string) (string, error) {
-					if wrapContentID == "" {
-						return smali, fmt.Errorf("don't have R.id.wrap_content")
-					}
 					// must follow pattern of previous (p0=ViewHolder p1=id p2=this)
 					return ReplaceStringAppend(
 						FixIndent("\n"+`
@@ -91,7 +81,7 @@ func init() {
 							iput-object p1, p0, Lcom/faultexception/reader/BooksAdapter$ViewHolder;->creatorView:Landroid/widget/TextView;
 						`),
 						FixIndent("\n"+`
-							const p1, `+wrapContentID+`
+							sget p1, Lcom/faultexception/reader/R$id;->series:I
 							invoke-virtual {p2, p1}, Landroid/view/View;->findViewById(I)Landroid/view/View;
 							move-result-object p1
 							check-cast p1, Landroid/widget/TextView;
