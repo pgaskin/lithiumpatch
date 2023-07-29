@@ -4,6 +4,7 @@ package patchdef
 import (
 	"bufio"
 	"bytes"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -369,4 +371,70 @@ func ExecuteTemplate(tmpl string, data any) string {
 		panic(err)
 	}
 	return b.String()
+}
+
+type resIDInst struct {
+	Path string
+	Type string
+	Name string
+}
+
+func (r *resIDInst) Do(apk string, diffwriter io.Writer) error {
+	var nid string
+	if err := PatchFile("res/values/public.xml", StringPatcherFunc(func(s string) (string, error) {
+		var obj struct {
+			XMLName xml.Name `xml:"resources"`
+			Public  []struct {
+				Type string `xml:"type,attr"`
+				Name string `xml:"name,attr"`
+				ID   string `xml:"id,attr"`
+			} `xml:"public"`
+		}
+		if err := xml.Unmarshal([]byte(s), &obj); err != nil {
+			return "", fmt.Errorf("parse existing resources: %w", err)
+		}
+
+		var last uint64
+		for _, x := range obj.Public {
+			if x.Type == r.Type {
+				if x.Name == r.Name {
+					return s, nil
+				}
+				v, err := strconv.ParseUint(x.ID, 0, 32)
+				if err != nil {
+					return "", fmt.Errorf("parse existing resources: %w", err)
+				}
+				if v >= last {
+					last = v
+				}
+			}
+		}
+		if last == 0 {
+			return "", fmt.Errorf("no existing resources found with type %q", r.Type)
+		}
+		nid = "0x" + strconv.FormatUint(last+1, 16)
+
+		return ReplaceStringPrepend(
+			"\n</resources>",
+			"\n    <public type=\""+r.Type+"\" name=\""+r.Name+"\" id=\""+nid+"\" />",
+		).PatchString(s)
+	})).Do(apk, diffwriter); err != nil {
+		return err
+	}
+	if nid != "" {
+		if err := PatchFile(r.Path+"/R$"+r.Type+".smali", StringPatcherFunc(func(s string) (string, error) {
+			return s + "\n\n.field public static final " + r.Name + ":I = " + nid + "\n", nil
+		})).Do(apk, diffwriter); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DefineR(path, typ, name string) Instruction {
+	return &resIDInst{
+		Path: path,
+		Type: typ,
+		Name: name,
+	}
 }
