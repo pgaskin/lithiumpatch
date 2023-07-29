@@ -110,6 +110,23 @@ func (w *writeInst) Do(apk string, diffwriter io.Writer) error {
 	return nil
 }
 
+type deleteInst struct {
+	Name string
+}
+
+func DeleteFile(name string) Instruction {
+	return &deleteInst{name}
+}
+
+func (d *deleteInst) Do(apk string, diffwriter io.Writer) error {
+	if _, err := fmt.Fprintf(diffwriter, "--- a/%s\n+++ /dev/null\nBinary file\n", d.Name); err != nil {
+		return fmt.Errorf("write diff: %w", err)
+	}
+
+	p := filepath.Join(apk, filepath.Clean(filepath.FromSlash(d.Name)))
+	return os.Remove(p)
+}
+
 type patchInst struct {
 	Sources  []string
 	Patchers []StringPatcher
