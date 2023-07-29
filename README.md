@@ -13,6 +13,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 - Additional information in the reader footer.
 - Series metadata support.
 - Increased number of visible actions for the reader toolbar.
+- Support for inverted portrait/landscape rotation.
 
 ## Usage
 
