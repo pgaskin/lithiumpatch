@@ -36,7 +36,7 @@ options:
   -d, --diff string                  Write diff to the specified file (default: disabled)
       --add-fonts strings            Add extra TTF fonts from a directory (Regular/Roman, Bold, Italic, and BoldItalic variants should be provided) (can be specified multiple times)
       --apktool string               Path to apktool.jar (2.4.1 - 2.6.1) (default "lib/apktool-2.6.1.jar")
-      --apksigner string             Path to apksigner.jar (0.8 or later) (default "lib/apksigner-0.8.jar")
+      --apksigner string             Path to apksigner.jar (0.9 or later) (default "lib/apksigner-0.9.jar")
       --zipalign string              zipalign executable (will search PATH) (default "zipalign")
       --keytool string               keytool executable (will search PATH) (default "keytool")
   -q, --quiet                        Do not show the diff
