@@ -11,9 +11,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pgaskin/lithiumpatch/dict"
 	"github.com/pgaskin/lithiumpatch/fonts"
 	"github.com/pgaskin/lithiumpatch/patches"
 
+	_ "github.com/pgaskin/lithiumpatch/dict/edgedict"
+	_ "github.com/pgaskin/lithiumpatch/dict/webster1913"
 	_ "github.com/pgaskin/lithiumpatch/patches/color"
 	_ "github.com/pgaskin/lithiumpatch/patches/coversize"
 	_ "github.com/pgaskin/lithiumpatch/patches/coversonly"
@@ -28,6 +31,8 @@ import (
 	_ "github.com/pgaskin/lithiumpatch/patches/seriesmeta"
 
 	"github.com/spf13/pflag"
+
+	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
 var (
@@ -70,6 +75,12 @@ func main() {
 	}
 	for _, x := range fonts.All() {
 		fmt.Printf("... %s\n", x)
+	}
+
+	fmt.Printf("> Parsing dictionaries\n")
+	if err := dict.Parse(true); err != nil {
+		fmt.Fprintf(os.Stderr, "error: parse dictionaries: %v\n", err)
+		os.Exit(1)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)

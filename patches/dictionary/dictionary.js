@@ -1,12 +1,15 @@
 /**
- * Copyright 2019-2022 Patrick Gaskin
+ * Copyright 2019-2023 Patrick Gaskin
  * Licensed under the MIT license.
  * Requires WebView 4.4.4+.
- * Requires an instance of https://github.com/pgaskin/dictserver.
  */
-'use strict';
+"use strict";
 
 var Dictionary = function () {
+    var dict_disabled = typeof LithiumApp !== "undefined" ? LithiumApp.getDictDisabled().split(" ") : [];
+    var dict_show_examples = typeof LithiumApp !== "undefined" ? LithiumApp.getDictShowExamples() : true;
+    var dict_show_info = typeof LithiumApp !== "undefined" ? LithiumApp.getDictShowInfo() : true;
+
     var Popup = function () {
         Popup.POPUP_POSITION_TOP                = 1,
         Popup.POPUP_POSITION_BOTTOM             = 2,
@@ -228,52 +231,72 @@ var Dictionary = function () {
                 return this;
             };
 
-            Item.prototype.word = function (word) {
-                var wd = document.createDocumentFragment();
+            Item.prototype.entry = function (e) {
+                var c = document.createDocumentFragment();
 
-                if (word.info && word.info.trim() != '') {
-                    css(wd.appendChild(document.createElement('div')), [
-                        ['font-style', 'italic'],
-                    ]).textContent = word.info;
-                }
-
-                var wdm = css(wd.appendChild(document.createElement('ol')), [
-                    ['margin', '0'],
-                    ['margin-top', '8px'],
-                    ['padding-left', '2em'],
-                ]);
-
-                for (var i = 0; word.meanings && i < word.meanings.length; i++) {
-                    var wdmm = css(wdm.appendChild(document.createElement('li')), [
-                        ['margin-bottom', '4px'],
-                    ]);
-                    wdmm.appendChild(document.createElement('div')).textContent = word.meanings[i].text;
-
-                    if (word.meanings[i].example && word.meanings[i].example.trim() != '') {
-                        css(wdmm.appendChild(document.createElement('div')), [
+                for (var i = 0; i < e.meaningGroups.length; i++) {
+                    if (e.meaningGroups[i].info.length) {
+                        css(c.appendChild(document.createElement('div')), [
                             ['font-style', 'italic'],
-                        ]).textContent = word.meanings[i].example;
+                        ]).textContent = e.meaningGroups[i].info.join(' \u2014 ');
+                    }
+                    var l = css(c.appendChild(document.createElement('ol')), [
+                        ['margin', '0'],
+                        ['margin-top', '8px'],
+                        ['padding-left', '2em'],
+                    ]);
+                    for (var j = 0; j < e.meaningGroups[i].meanings.length; j++) {
+                        var ll = css(l.appendChild(document.createElement('li')), [
+                            ['margin-bottom', '4px'],
+                        ]);
+                        var llm = ll.appendChild(document.createElement('div'))
+                        for (var k = 0; k < e.meaningGroups[i].meanings[j].tags.length; k++) {
+                            css(llm.appendChild(document.createElement('span')), [
+                                ['display', 'inline-block'],
+                                ['font-size', '.85em'],
+                                ['vertical-align', 'baseline'],
+                                ['padding', '.1em .25em'],
+                                ['background-color', 'rgba(128,128,128,0.2)'],
+                            ]).textContent = e.meaningGroups[i].meanings[j].tags[k]
+                        }
+                        llm.appendChild(document.createElement('span')).textContent = e.meaningGroups[i].meanings[j].text;
+
+                        if (dict_show_examples) {
+                            for (var k = 0; k < e.meaningGroups[i].meanings[j].examples.length; k++) {
+                                css(llm.appendChild(document.createElement('div')), [
+                                    ['font-style', 'italic'],
+                                    ['margin-top', '4px'],
+                                ]).textContent = e.meaningGroups[i].meanings[j].examples[k];
+                            }
+                        }
                     }
                 }
 
-                for (var i = 0; word.notes && i < word.notes.length; i++) {
-                    css(wd.appendChild(document.createElement('div')), [
+                if (dict_show_info && e.info.length) {
+                    css(c.appendChild(document.createElement('div')), [
+                        ['opacity', '.75'],
                         ['margin-top', '8px'],
-                    ]).textContent = word.notes[i];
+                    ]).textContent = e.info;
                 }
 
-                if (word.credit && word.credit.trim() != '') {
-                    css(wd.appendChild(document.createElement('div')), [
+                if (e.source.length) {
+                    css(c.appendChild(document.createElement('div')), [
                         ['font-style', 'italic'],
                         ['margin-top', '8px'],
                         ['font-size', '.85em'],
-                    ]).textContent = word.credit;
+                    ]).textContent = e.source;
                 }
 
-                this._title.textContent = word.word;
-                this._body.innerHTML = '';
-                this._body.appendChild(wd);
+                this._title.textContent = e.name;
+                if (e.pronunciation.length) {
+                    css(this._title.appendChild(document.createElement('span')), [
+                        ['font-weight', 'normal'],
+                        ['opacity', '0.5'],
+                    ]).textContent = ' \u2022 ' + e.pronunciation;
+                }
 
+                this._body.innerHTML = '';
+                this._body.appendChild(c);
                 return this;
             };
 
@@ -309,118 +332,6 @@ var Dictionary = function () {
         return Popup;
     }();
 
-    var API = function () {
-        API.DEFAULT_SERVER_SET = [['https://dict.api.pgaskin.net/']];
-
-        function API(serverSet) {
-            this._ss = (serverSet && serverSet.length > 0)
-                ? serverSet
-                : API.DEFAULT_SERVER_SET;
-        }
-
-        API.fromLithiumSettings = function () {
-            return new API(parse((typeof LithiumApp !== 'undefined' && LithiumApp.getDictionaryURL)
-                ? LithiumApp.getDictionaryURL()
-                : null
-            ));
-        }
-
-        API.prototype.define = function (word) {
-            return trySet(this._ss, api.bind(null, word)).map(transform);
-        }
-
-        // format: [server[|fallback]... ]...
-        function parse(ss) {
-            if (!ss) {
-                return null;
-            }
-            ss = ss.split(' ');
-            for (var i = 0; i < ss.length; i++) {
-                ss[i] = ss[i].split('|');
-                for (var j = 0; j < ss[i].length; j++) {
-                    if (ss[i][j].length == 0) {
-                        ss[i].splice(j, 1);
-                        j--;
-                    } else {
-                        if (ss[i][j].startsWith('//'))
-                            ss[i][j] = 'http:' + ss[i][j];
-                        if (!ss[i][j].startsWith('http://') && !ss[i][j].startsWith('https://'))
-                            ss[i][j] = 'http://' + ss[i][j];
-                        if (!ss[i][j].endsWith('/'))
-                            ss[i][j] += '/';
-                    }
-                }
-                if (ss[i].length == 0) {
-                    ss.splice(i, 1);
-                    i--;
-                }
-            }
-            return ss;
-        }
-
-        function transform(resp) {
-            return resp.then(function (word) {
-                return word
-                    ? [word].concat(word.additional_words || []).concat(word.referenced_words || [])
-                    : [];
-            });
-        };
-
-        function trySet(sss, fn) {
-            return sss.map(function (ss) {
-                return ss.reduce(function (acc, s) {
-                    return acc.catch(function (ex) {
-                        return fn(s).catch(function(exc) {
-                            return '[' + s + '] ' + exc.toString() + '; ' + ex.toString();
-                        });
-                    });
-                }, Promise.reject('No servers left to try'), ss);
-            });
-        }
-
-        function api(word, base) {
-            return new Promise(function (resolve, reject) {
-                var xhr = new XMLHttpRequest();
-                xhr.timeout = 3000;
-                xhr.onerror = function () {
-                    reject('Network error');
-                };
-                xhr.onload = function () {
-                    var obj;
-                    if (xhr.status == 0) {
-                        reject('Unknown error');
-                        return;
-                    }
-                    if (xhr.status == 404) {
-                        resolve(null);
-                        return;
-                    }
-                    try {
-                        obj = JSON.parse(xhr.responseText);
-                    } catch (ex) {
-                        if (xhr.status != 200)
-                            reject('Response status ' + xhr.status.toString() + ' ' + xhr.statusText);
-                        else
-                            reject('Parse JSON: ' + ex.toString());
-                        return;
-                    }
-                    if (!obj.status || obj.status != 'success') {
-                        if (typeof obj.result === 'string')
-                            reject('API error: ' + obj.result.toString());
-                        else
-                            reject('API error: ' + JSON.stringify(obj.result));
-                        return;
-                    }
-                    resolve(obj.result);
-                };
-                xhr.open('GET', base + 'word/' + encodeURIComponent(word.trim()));
-                xhr.send();
-            });
-        }
-
-        return API;
-    }();
-
     var Watcher = function () {
         // https://apps.timwhitlock.info/js/regex with:
         // ' ', ''', '"', Pi, Ps, Mc
@@ -442,10 +353,10 @@ var Dictionary = function () {
         // /(?:[...])+/
         var spaceRe = /(?:[ \u00a0\u1680\u180e\u2000-\u200a\u2029\u202f\u205f\u3000])+/
 
-        function Watcher(api, popup, settleTimeout) {
-            this.api = api;
+        function Watcher(popup, query, settleTimeout) {
+            this.query = query;
             this.popup = popup;
-            this.settleTimeout = settleTimeout || 700;
+            this.settleTimeout = settleTimeout || 60;
             this._settleTimer = null;
             this._pendingItem = null;
             this._range = null;
@@ -479,7 +390,7 @@ var Dictionary = function () {
             this._range = sel.rangeCount != 0
                 ? sel.getRangeAt(0)
                 : null;
-            var normalized = this._range.toString().trim().replace(normIRe, '').replace(normFRe, '')
+            var normalized = this._range ? this._range.toString().trim().replace(normIRe, '').replace(normFRe, '') : null
             var eligible = this._range
                 && normalized.length != 0
                 && normalized.length < 50
@@ -508,23 +419,19 @@ var Dictionary = function () {
             // after the selection settles, make the request
             var self = this;
             this._settleTimer = window.setTimeout(function () {
-                Promise.all(self.api.define(normalized).map(function (rsp) {
-                    return rsp.catch(function (ex) {
-                        return ex.toString();
-                    });
-                })).then(function (ss) {
-                    if (self._pendingItem) {
-                        var x = self._pendingItem.removeAll();
+                self.query(normalized).catch(function (ex) {
+                    return ex.toString();
+                }).then(function(ss) {
+                    var x = self._pendingItem.removeAll();
+                    if (!Array.isArray(ss)) {
+                        x.status(normalized, ss);
+                    } else if (ss.length == 0) {
+                        x.status(normalized, 'No match for word.');
+                    } else {
+                        var n = 0
                         for (var i = 0; i < ss.length; i++) {
-                            x = i ? x.addNew() : x;
-                            if (!Array.isArray(ss[i])) {
-                                x.status(normalized, ss[i]);
-                            } else if (ss[i].length == 0) {
-                                x.status(normalized, 'No match for word.'); // TODO: maybe show the dictionary server if more than one?
-                            } else {
-                                for (var j = 0; j < ss[i].length; j++) {
-                                    (j ? x.addNew() : x).word(ss[i][j]);
-                                }
+                            for (var j = 0; j < ss[i].entries.length; j++) {
+                                (n++ ? x.addNew() : x).entry(ss[i].entries[j]);
                             }
                         }
                     }
@@ -539,9 +446,28 @@ var Dictionary = function () {
         return Watcher;
     }();
 
+    var dictJS = document.querySelector("script[data-dictionaries]");
+    var dicts = dictJS.getAttribute("data-dictionaries").split(" ").filter(function (d) {
+        return dict_disabled.indexOf(d) == -1;
+    }).map(function (d) {
+        return new URL(d, new URL(dictJS.getAttribute("src"), window.location.href).href).href;
+    });
+    if (dicts.length == 0) {
+        return null;
+    }
+
     var popup = new Popup(Popup.POPUP_POSITION_SELECTION_OPPOSITE);
-    var api = API.fromLithiumSettings();
-    var watcher = new Watcher(api, popup);
+    var watcher = new Watcher(popup, function (term) {
+        return Promise.all(dicts.map(function (dict) {
+            return window.dict(dict).then(function (dict) {
+                return dict.query(term);
+            });
+        })).then(function (res) {
+            return res.filter(function (obj) {
+                return obj;
+            });
+        });
+    });
 
     hookThemeApplied(popup.onThemeApplied.bind(popup));
 
