@@ -24,7 +24,23 @@ var tmpl = template.Must(template.New("").Parse(`
 <title></title>
 </head>
 <body>
-<div contenteditable>test</div>
+<div style="margin: 80vh 0" contenteditable>test test test word word word sample sample sample</div>
+<script>
+globalThis.LithiumThemes = {
+    set: function() {},
+}
+document.addEventListener("DOMContentLoaded", () => {
+    globalThis.LithiumThemes.set({
+        backgroundColor: 16113331,
+        bgIsDark: false,
+        builtin: false,
+        darkChrome: true,
+        linkColor: 867715,
+        name: "test",
+        textColor: 1118481,
+    })
+})
+</script>
 <script src="dict.js" data-dictionaries="{{range $i, $x := .}}{{if $i}} {{end}}{{$x}}{{end}}"></script>
 <script src="dictionary.js"></script>
 <script>
