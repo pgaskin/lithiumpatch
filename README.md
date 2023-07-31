@@ -7,7 +7,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 - Custom cover aspect ratio.
 - Optional cover-only grid view.
 - Debuggable reader webview.
-- Dictionary.
+- Offline dictionary.
 - Custom fonts.
 - Smaller minimum font size.
 - Additional information in the reader footer.
@@ -22,8 +22,9 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 2. Install JRE 1.8 or newer.
 3. Install Go 1.21 or newer.
 4. Install zipalign (part of the Android build tools).
-5. Run `go run . /path/to/Lithium_0.24.1.apk` from the root of the repository. Use `--help` to see additional options including using a custom keystore, setting the tool paths, and adding fonts from an external directory.
-6. If you haven't already done so, create a new Google APIs project with access to the Drive API for the signing key's signature to enable sync.
+5. Optionally run `go run github.com/pgaskin/edgedict/cmd/edgedict-fetch --output dict/edgedict` to download additional dictionaries.
+6. Run `go run . /path/to/Lithium_0.24.5.apk` from the root of the repository. Use `--help` to see additional options including using a custom keystore, setting the tool paths, and adding fonts from an external directory.
+7. If you haven't already done so, create a new Google APIs project with access to the Drive API for the signing key's signature to enable sync.
 
 ```
 usage: lithiumpatch [options] APK_PATH
@@ -35,7 +36,7 @@ options:
   -o, --output string                Output APK path (default: {basename}.patched.resigned.apk)
   -d, --diff string                  Write diff to the specified file (default: disabled)
       --add-fonts strings            Add extra TTF fonts from a directory (Regular/Roman, Bold, Italic, and BoldItalic variants should be provided) (can be specified multiple times)
-      --apktool string               Path to apktool.jar (2.4.1 - 2.6.1) (default "lib/apktool-2.6.1.jar")
+      --apktool string               Path to apktool.jar (2.8.1) (default "lib/apktool-2.8.1.jar")
       --apksigner string             Path to apksigner.jar (0.9 or later) (default "lib/apksigner-0.9.jar")
       --zipalign string              zipalign executable (will search PATH) (default "zipalign")
       --keytool string               keytool executable (will search PATH) (default "keytool")
