@@ -20,7 +20,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 
 1. Download the Lithium 0.24.5 APK from [here](https://www.apkmirror.com/apk/faultexception/lithium-epub-reader/lithium-epub-reader-0-24-5-release/lithium-epub-reader-0-24-5-android-apk-download/) or extract it from your device.
 2. Install JRE 1.8 or newer.
-3. Install Go 1.18 or newer.
+3. Install Go 1.21 or newer.
 4. Install zipalign (part of the Android build tools).
 5. Run `go run . /path/to/Lithium_0.24.1.apk` from the root of the repository. Use `--help` to see additional options including using a custom keystore, setting the tool paths, and adding fonts from an external directory.
 6. If you haven't already done so, create a new Google APIs project with access to the Drive API for the signing key's signature to enable sync.
