@@ -20,8 +20,6 @@ var Dictionary = (function() {
                 sub = sub.map(x => x[isHtml] ? x : (x !== undefined && x !== null) ? escape(x.toString()) : "").join("")
             } else if (sub === undefined || sub === null || sub === false) {
                 sub = ""
-            } else if (literals.raw[i]?.endsWith(" style=") && typeof sub === "object") {
-                sub = `"${escape(css(sub))}"`
             } else if (literals.raw[i]?.endsWith("$")) {
                 acc = acc.slice(0, -1)
                 sub = sub.toString()
@@ -37,22 +35,6 @@ var Dictionary = (function() {
                 value: true,
             },
         })
-    }
-
-    /**
-     * Converts obj into a CSS string, normalizing property names and removing
-     * false/undefined.
-     */
-    function css(obj) {
-        const props = Object.entries(obj).map(([k, v]) => [
-            k.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`),
-            (v === false || v === null) ? undefined : v
-        ])
-        const css = props
-            .filter(([k, v]) => typeof v !== "undefined")
-            .map(([k, v]) => `${k}:${v}`)
-            .join(";")
-        return css
     }
 
     /**
@@ -94,45 +76,83 @@ var Dictionary = (function() {
      * Theme-aware popup.
      */
     class Popup {
-        #wrapper
+        #root
+        #cssBase
+        #cssExtra
         #shadow
+        #wrapper
         #popup
         #inner
         #content
         #pos
         #posRect
-        constructor() {
-            this.#wrapper = document.createElement("x-popup")
-            this.#wrapper.style.setProperty("display", "block", "important")
-            this.#wrapper.style.setProperty("margin", "0", "important")
-            this.#wrapper.style.setProperty("padding", "0", "important")
-            this.#wrapper.style.setProperty("position", "fixed", "important")
-            this.#wrapper.style.setProperty("left", "16px", "important")
-            this.#wrapper.style.setProperty("right", "16px", "important")
-            this.#wrapper.style.setProperty("height", "auto", "important")
-            this.#wrapper.style.setProperty("width", "auto", "important")
-            this.#wrapper.style.setProperty("overflow", "visible", "important")
-            this.#wrapper.style.setProperty("user-select", "none", "important")
-            this.#wrapper.style.setProperty("z-index", "9999999", "important")
-            this.#wrapper.style.setProperty("transform", "none", "important")
-            this.#wrapper.style.setProperty("filter", "none", "important")
-            this.#wrapper.style.setProperty("animation", "none", "important")
-            this.#wrapper.style.setProperty("transition", "opacity .1s ease-in", "important")
+        constructor(css = undefined) {
+            this.#root = document.createElement("x-popup")
 
-            this.#shadow = this.#wrapper.attachShadow({mode: "open"})
+            this.#cssBase = new CSSStyleSheet()
+            this.#cssBase.replaceSync(`
+                #wrapper {
+                    display: block;
+                    position: fixed;
+                    left: 16px;
+                    right: 16px;
+                    height: auto;
+                    width: auto;
+                    overflow: visible;
+                    user-select: none;
+                    z-index: 9999999;
+                    transition: opacity .1s ease-in;
+                }
+                #popup {
+                    contain: strict;
+                    display: block;
+                    box-sizing: border-box;
+                    position: relative;
+                    max-height: 220px;
+                    min-height: 50px;
+                    height: 30vh;
+                    max-width: 480px;
+                    width: 100%;
+                    overflow: hidden;
+                    margin: 16px auto;
+                    border: 1px solid transparent;
+                    border-radius: 4px;
+                }
+                #inner {
+                    overscroll-behavior: contain;
+                    display: block;
+                    box-sizing: border-box;
+                    position: absolute;
+                    overflow-x: hidden;
+                    overflow-y: auto;
+                    inset: 0;
+                    line-height: 1.25;
+                    font-size: 14px;
+                    font-family: serif;
+                }
+                #inner::-webkit-scrollbar {
+                    display: none;
+                }
+            `)
 
-            this.#popup = this.#shadow.appendChild(document.createElement("div"))
-            this.#popup.style.setProperty("box-sizing", "border-box")
-            this.#popup.style.setProperty("position", "relative")
-            this.#popup.style.setProperty("max-height", "220px")
-            this.#popup.style.setProperty("min-height", "50px")
-            this.#popup.style.setProperty("height", "30vh")
-            this.#popup.style.setProperty("max-width", "480px")
-            this.#popup.style.setProperty("width", "100%")
-            this.#popup.style.setProperty("overflow", "hidden")
-            this.#popup.style.setProperty("margin", "16px auto")
-            this.#popup.style.setProperty("border", "1px solid transparent")
-            this.#popup.style.setProperty("border-radius", "4px")
+            this.#cssExtra = new CSSStyleSheet()
+            if (css !== undefined) {
+                this.#cssExtra.replace(css)
+            }
+
+            this.#shadow = this.#root.attachShadow({mode: "open"})
+            this.#shadow.adoptedStyleSheets = [this.#cssBase, this.#cssExtra]
+
+            this.#wrapper = this.#shadow.appendChild(document.createElement("div"))
+            this.#wrapper.id = "wrapper"
+
+            this.#popup = this.#wrapper.appendChild(document.createElement("div"))
+            this.#popup.id = "popup"
+
+            this.#inner = this.#popup.appendChild(document.createElement("div"))
+            this.#inner.id = "inner"
+
+            this.#content = this.#inner.appendChild(document.createElement("div"))
 
             const applyTheme = (dark = false, bg = undefined, fg = undefined) => {
                 this.#popup.style.setProperty("border-color", dark ? "rgba(255, 255, 255, .25)" : "rgba(0, 0, 0, .25)")
@@ -153,25 +173,6 @@ var Dictionary = (function() {
                     applyTheme()
                 }
             }
-
-            this.#popup.style.setProperty("line-height", "1.25")
-            this.#popup.style.setProperty("font-size", "14px")
-            this.#popup.style.setProperty("font-family", "serif")
-
-            this.#inner = this.#popup.appendChild(document.createElement("div"))
-            this.#inner.style.setProperty("box-sizing", "border-box")
-            this.#inner.style.setProperty("position", "absolute")
-            this.#inner.style.setProperty("overflow-x", "hidden")
-            this.#inner.style.setProperty("overflow-y", "auto")
-            this.#inner.style.setProperty("inset", "0")
-
-            this.#content = this.#inner.appendChild(document.createElement("div"))
-
-            this.#shadow.appendChild(document.createElement("style")).textContent = `
-                ::-webkit-scrollbar {
-                    display: none;
-                }
-            `
 
             window.addEventListener("resize", () => this.visible && this.move(), true)
             document.addEventListener("scroll", () => this.visible && this.move(), true)
@@ -206,12 +207,12 @@ var Dictionary = (function() {
 
             if (!this.visible) {
                 this.#wrapper.style.setProperty("opacity", "0", "important")
-                document.body.appendChild(this.#wrapper);
+                document.body.appendChild(this.#root);
                 window.setTimeout(() => this.#wrapper.style.setProperty("opacity", "1", "important"), 0)
                 return true
             }
-            if (this.#wrapper.parentElement.lastElementChild != this.#wrapper) {
-                this.#wrapper.parentElement.appendChild(this.#wrapper)
+            if (this.#root.parentElement.lastElementChild != this.#root) {
+                this.#root.parentElement.appendChild(this.#root)
             }
             return false
         }
@@ -221,7 +222,7 @@ var Dictionary = (function() {
          */
         hide() {
             if (this.visible) {
-                this.#wrapper.remove()
+                this.#root.remove()
                 this.#pos = false
                 this.#posRect = undefined
             }
@@ -262,68 +263,9 @@ var Dictionary = (function() {
          * Whether the popup is currently visible.
          */
         get visible() {
-            return this.#wrapper.parentElement
+            return !!this.#root.parentElement
         }
     }
-
-    const render = (t, x) => !Array.isArray(x) ? html`
-        <div style=${{padding: "8px", fontSize: !!settings.dict_small_font && ".85em"}}>
-            <div style=${{fontSize: "1.14em", marginBottom: "4px"}}>
-                <span style=${{fontWeight: "bold"}}>${t}</span>${"\u00a0"}
-            </div>
-            <div>
-                ${x}
-            </div>
-        </div>
-    ` : x.map((x, i) => html`
-        <div style=${{padding: "8px", borderTop: !!i && "1px solid rgba(128,128,128,0.4)", fontSize: !!settings.dict_small_font && ".85em"}}>
-            <div style=${{fontSize: "1.14em", marginBottom: "4px"}}>
-                <span style=${{fontWeight: "bold"}}>${x.name}</span>
-                ${!!x.pronunciation && html`
-                    <span style=${{opacity: .75}}> ${"\u00b7\u00a0"}${x.pronunciation}</span>
-                `}
-                ${"\u00a0"}
-            </div>
-            ${x.meaningGroups.map(x => html`
-                ${!!x.info.length && html`
-                    <div style=${{fontStyle: "italic", marginBottom: "4px"}}>${x.info.join(" \u2014 ")}</div>
-                `}
-                ${!!x.meanings.length && html`
-                    <ol style=${{margin: 0, marginTop: "8px", marginBottom: "16px", paddingLeft: "2em"}}>
-                        ${x.meanings.map(x => html`
-                            <li style=${{marginBottom: "4px"}}>
-                                ${x.tags.map(x => html`
-                                    <span style=${{
-                                        display: "inline-block",
-                                        fontSize: ".85em",
-                                        verticalAlign: "baseline",
-                                        padding: ".1em .25em",
-                                        backgroundColor: "rgba(128,128,128,0.2)",
-                                    }}>${x}</span>${"\u00a0"}
-                                `)}
-                                ${!!x.text.length && html`
-                                    <span>${x.text}</span>
-                                `}
-                                ${settings.dict_show_examples && x.examples.map(x => html`
-                                    <div style=${{fontStyle: "italic", marginTop: "4px"}}>${x}</div>
-                                `)}
-                            </li>
-                        `)}
-                    </ol>
-                `}
-            `)}
-            ${settings.dict_show_info && !!x.info.length && html`
-                <div style=${{opacity: .75, marginTop: "8px"}}>${x.info}</div>
-            `}
-            ${!!x.source.length && html`
-                <div style=${{fontStyle: "italic", fontSize: ".85em", marginTop: "8px"}}>${x.source}</div>
-            `}
-        </div>
-    `).join("")
-
-    let dictReq
-    let dictSem
-    const dictPopup = new Popup()
 
     const settings = {
         dict_disabled: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictDisabled().split(" ") : [],
@@ -337,7 +279,116 @@ var Dictionary = (function() {
         dicts: document.currentScript.dataset.dicts.split(" "),
     }
 
+    const dictPopup = new Popup(`
+        section {
+            padding: 8px;
+            border-top: 1px solid rgba(128,128,128,0.4);
+            font-size: ${settings.dict_small_font ? ".85em" : "1em"};
+        }
+        section:first-of-type {
+            border-top: none;
+        }
+        section > header {
+            display: flex;
+            fontSize: 1.14em;
+            margin-bottom: 4px;
+        }
+        section > header::after {
+            content: '\u00a0';
+        }
+        section > header > .headword {
+            font-weight: bold;
+        }
+        section > header > .pronunciation {
+            opacity: .75;
+        }
+        section > header > .pronunciation::before {
+            content: '\u00a0\u00b7\u00a0';
+        }
+        section > .meaning-group-info {
+            font-style: italic;
+            margin-bottom: 4px;
+        }
+        section > ol.meaning-group-definitions {
+            margin: 8px 0 16px;
+            padding: 0 0 0 2em;
+        }
+        section > ol.meaning-group-definitions > li {
+            margin: 0 0 4px;
+        }
+        section > ol.meaning-group-definitions > li > span.tag {
+            display: inline-block;
+            font-size: .85em;
+            vertical-align: baseline;
+            padding: .1em .25em;
+            background-color: rgba(128,128,128,0.2);
+        }
+        section > ol.meaning-group-definitions > li > div.example {
+            font-style: italic;
+            margin-top: 4px;
+        }
+        section > .entry-info {
+            opacity: 0.75;
+            margin-top: 8px;
+        }
+        section > .source {
+            font-style: italic;
+            font-size: .85em;
+            margin-top: 8px;
+        }
+    `)
+
+    const render = (t, x) => !Array.isArray(x) ? html`
+        <section>
+            <header>
+                <div class="headword">${t}</div>${"\u00a0"}
+            </header>
+            <div>
+                ${x}
+            </div>
+        </section>
+    ` : x.map((x, i) => html`
+        <section>
+            <header>
+                <div class="headword">${x.name}</div>
+                ${!!x.pronunciation && html`
+                    <div class="pronunciation">${x.pronunciation}</div>
+                `}
+            </header>
+            ${x.meaningGroups.map(x => html`
+                ${!!x.info.length && html`
+                    <div class="meaning-group-info">${x.info.join(" \u2014 ")}</div>
+                `}
+                ${!!x.meanings.length && html`
+                    <ol class="meaning-group-definitions">
+                        ${x.meanings.map(x => html`
+                            <li>
+                                ${x.tags.map(x => html`
+                                    <span class="tag">${x}</span>
+                                `)}
+                                ${!!x.text.length && html`
+                                    <span>${x.text}</span>
+                                `}
+                                ${settings.dict_show_examples && x.examples.map(x => html`
+                                    <div class="example">${x}</div>
+                                `)}
+                            </li>
+                        `)}
+                    </ol>
+                `}
+            `)}
+            ${settings.dict_show_info && !!x.info.length && html`
+                <div class="entry-info">${x.info}</div>
+            `}
+            ${!!x.source.length && html`
+                <div class="source">${x.source}</div>
+            `}
+        </section>
+    `).join("")
+
     import(init.dict).then(({default: dictionary, normalize}) => {
+        let dictReq
+        let dictSem
         document.addEventListener("selectionchange", () => {
             // clear the previous settle timer
             if (dictReq !== undefined) {
