@@ -97,7 +97,7 @@ func init() {
 					invoke-direct {p1, v2, v1, v0}, Landroid/webkit/WebResourceResponse;-><init>(Ljava/lang/String;Ljava/lang/String;Ljava/io/InputStream;)V
 					const v0, 404
 					const-string v1, "Not Found"
-					invoke-direct {p1, v0, v1}, Landroid/webkit/WebResourceResponse;->setStatusCodeAndReasonPhrase(ILjava/lang/String;)V
+					invoke-virtual {p1, v0, v1}, Landroid/webkit/WebResourceResponse;->setStatusCodeAndReasonPhrase(ILjava/lang/String;)V
 					goto :cors
 
 					:t1c2
@@ -150,11 +150,7 @@ func init() {
 		PatchFile("smali/com/faultexception/reader/content/HtmlContentWebView.smali",
 			ReplaceStringAppend(
 				`<script type=\'text/javascript\' src=\'file:///android_asset/js/themes.js\'></script>`,
-				`<script type=\'text/javascript\' src=\'file:///android_asset/js/dictionary.js\'></script>`,
-			),
-			ReplaceStringAppend(
-				`<script type=\'text/javascript\' src=\'file:///android_asset/js/themes.js\'></script>`,
-				`<script type=\'text/javascript\' src=\'https://dict.androidplatform.net/dict.js\' data-dictionaries=\'{{dicts}}\'></script>`,
+				`<script type=\'text/javascript\' src=\'file:///android_asset/js/dictionary.js\' data-dict=\'https://dict.androidplatform.net/dict.js\' data-dicts=\'{{dicts}}\'></script>`,
 			),
 			StringPatcherFunc(func(s string) (string, error) {
 				var x strings.Builder

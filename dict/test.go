@@ -41,15 +41,13 @@ document.addEventListener("DOMContentLoaded", () => {
     })
 })
 </script>
-<script src="dict.js" data-dictionaries="{{range $i, $x := .}}{{if $i}} {{end}}{{$x}}{{end}}"></script>
-<script src="dictionary.js"></script>
-<script>
-(async function() {
+<script src="dictionary.js" data-dicts="{{range $i, $x := .}}{{if $i}} {{end}}{{$x}}{{end}}"></script>
+<script type="module">
+import dict from "./dict.js"
 {{- range . }}
 globalThis["{{.}}"] = await dict("{{.}}")
 {{- end }}
 console.log("loaded dictionaries")
-})()
 </script>
 `))
 

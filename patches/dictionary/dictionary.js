@@ -4,7 +4,7 @@
  */
 "use strict";
 
-globalThis.Dictionary = (function() {
+var Dictionary = (function() {
     /**
      * Symbol used by html to mark processed strings.
      */
@@ -266,32 +266,6 @@ globalThis.Dictionary = (function() {
         }
     }
 
-    const settings = {
-        dict_disabled: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictDisabled().split(" ") : [],
-        dict_show_examples: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictShowExamples() : true,
-        dict_show_info: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictShowInfo() : true,
-    }
-
-    const define = (() => {
-        const script = document.querySelector("script[data-dictionaries]")
-        const dicts = script.dataset.dictionaries.split(" ").filter(n => !settings.dict_disabled.includes(n))
-        const url = new URL(script.getAttribute("src"), window.location.href)
-        const urls = dicts.map(n => [n, new URL(n, url).href])
-        return term => Promise.all(urls.map(async ([n, u]) => {
-            try {
-                var dict = await globalThis.dict(u)
-            } catch (ex) {
-                throw new Error(`load ${n}: ${ex}`)
-            }
-            try {
-                var res = await dict.query(term)
-            } catch (ex) {
-                throw new Error(`query ${n}: ${ex}`)
-            }
-            return res
-        })).then(r => r.filter(r => r).flat())
-    })()
-
     const render = (t, x) => !Array.isArray(x) ? html`
         <div style=${{padding: "8px"}}>
             <div style=${{fontSize: "1.14em", marginBottom: "4px"}}>
@@ -351,77 +325,108 @@ globalThis.Dictionary = (function() {
     let dictSem
     const dictPopup = new Popup()
 
-    document.addEventListener("selectionchange", () => {
-        // clear the previous settle timer
-        if (dictReq !== undefined) {
-            window.clearTimeout(dictReq)
-            dictReq = undefined
-        }
+    const settings = {
+        dict_disabled: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictDisabled().split(" ") : [],
+        dict_show_examples: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictShowExamples() : true,
+        dict_show_info: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictShowInfo() : true,
+    }
 
-        // get the current selection if it's valid for a lookup
-        let sel = document.getSelection()
-        let rng, txt
-        if (sel.rangeCount) {
-            rng = sel.getRangeAt(0)
-            txt = rng.toString()
-        }
-        if (rng !== undefined && txt.length < 1) {
-            rng = undefined
-        }
-        if (rng !== undefined && txt.length > 100) {
-            rng = undefined
-        }
-        if (rng !== undefined && (txt.match(/\s+/g) || []).length > 5) {
-            rng = undefined
-        }
+    const init = {
+        dict: new URL(document.currentScript.dataset.dict || "./dict.js", document.currentScript.src).href,
+        dicts: document.currentScript.dataset.dicts.split(" "),
+    }
 
-        // if we don't have a valid selection, hide the popup
-        if (rng === undefined) {
-            dictPopup.hide()
-            return
-        }
+    import(init.dict).then(({default: dictionary, normalize}) => {
+        document.addEventListener("selectionchange", () => {
+            // clear the previous settle timer
+            if (dictReq !== undefined) {
+                window.clearTimeout(dictReq)
+                dictReq = undefined
+            }
 
-        // set the initial popup contents
-        const tt = globalThis.dict.Dictionary.normalize(txt)
-        const el = dictPopup.replace(render(tt, "Loading."))
+            // get the current selection if it's valid for a lookup
+            let sel = document.getSelection()
+            let rng, txt
+            if (sel.rangeCount) {
+                rng = sel.getRangeAt(0)
+                txt = rng.toString()
+            }
+            if (rng !== undefined && txt.length < 1) {
+                rng = undefined
+            }
+            if (rng !== undefined && txt.length > 100) {
+                rng = undefined
+            }
+            if (rng !== undefined && (txt.match(/\s+/g) || []).length > 5) {
+                rng = undefined
+            }
 
-        // show the popup
-        if (dictPopup.show(false, () => rng.getBoundingClientRect())) {
+            // if we don't have a valid selection, hide the popup
+            if (rng === undefined) {
+                dictPopup.hide()
+                return
+            }
 
-            // if we're not modifying an existing selection, discard the old semaphore
-            dictSem = Promise.resolve()
-        }
+            // set the initial popup contents
+            const tt = normalize(txt)
+            const el = dictPopup.replace(render(tt, "Loading."))
 
-        // wait for the selection to settle
-        const ownSettle = dictReq = window.setTimeout(() => {
+            // show the popup
+            if (dictPopup.show(false, () => rng.getBoundingClientRect())) {
 
-            // wait for the previous lookup to finish, then continue ours
-            dictSem = dictSem.finally(async () => {
+                // if we're not modifying an existing selection, discard the old semaphore
+                dictSem = Promise.resolve()
+            }
 
-                // check if we've been replaced or canceled
-                if (ownSettle !== dictReq) {
-                    return
-                }
+            // wait for the selection to settle
+            const ownSettle = dictReq = window.setTimeout(() => {
 
-                // do the lookup
-                try {
-                    const es = await define(txt)
-                    if (es.length) {
-                        el.innerHTML = render(tt, es)
-                    } else {
-                        el.innerHTML = render(tt, "No matches found.")
+                // wait for the previous lookup to finish, then continue ours
+                dictSem = dictSem.finally(async () => {
+
+                    // check if we've been replaced or canceled
+                    if (ownSettle !== dictReq) {
+                        return
                     }
-                } catch (ex) {
-                    el.innerHTML = render(tt, `${ex}.`)
-                }
 
-                // we're done
-                if (ownSettle === dictReq) {
-                    dictReq = undefined
-                }
-            })
-        }, 50)
-    }, true)
+                    // do stuff
+                    try {
+                        // do the lookup
+                        const es = await Promise.all(init.dicts.map(async n => {
+                            if (!settings.dict_disabled.includes(n)) {
+                                try {
+                                    var d = await dictionary(n)
+                                } catch (ex) {
+                                    throw new Error(`load ${n}: ${ex}`)
+                                }
+                                try {
+                                    var r = await d.query(tt, false)
+                                } catch (ex) {
+                                    throw new Error(`query ${n}: ${ex}`)
+                                }
+                                return r
+                            }
+                        }))
+
+                        // render the entries
+                        const ee = es.filter(e => e).flat()
+                        if (ee.length) {
+                            el.innerHTML = render(tt, ee)
+                        } else {
+                            el.innerHTML = render(tt, "No matches found.")
+                        }
+                    } catch (ex) {
+                        el.innerHTML = render(tt, `${ex}.`)
+                    }
+
+                    // we're done
+                    if (ownSettle === dictReq) {
+                        dictReq = undefined
+                    }
+                })
+            }, 50)
+        }, true)
+    })
 
     return dictPopup
 })()
