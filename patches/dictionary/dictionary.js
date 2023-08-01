@@ -289,7 +289,7 @@ globalThis.Dictionary = (function() {
                 throw new Error(`query ${n}: ${ex}`)
             }
             return res
-        })).then(r => r.filter(r => r).flatMap(r => r.entries))
+        })).then(r => r.filter(r => r).flat())
     })()
 
     const render = (t, x) => !Array.isArray(x) ? html`
@@ -345,7 +345,7 @@ globalThis.Dictionary = (function() {
                 <div style=${{fontStyle: "italic", fontSize: ".85em", marginTop: "8px"}}>${x.source}</div>
             `}
         </div>
-    `)
+    `).join("")
 
     let dictReq
     let dictSem
@@ -396,7 +396,7 @@ globalThis.Dictionary = (function() {
         const ownSettle = dictReq = window.setTimeout(() => {
 
             // wait for the previous lookup to finish, then continue ours
-            dictSem = dictSem.catch(() => {}).then(async () => {
+            dictSem = dictSem.finally(async () => {
 
                 // check if we've been replaced or canceled
                 if (ownSettle !== dictReq) {
@@ -412,7 +412,7 @@ globalThis.Dictionary = (function() {
                         el.innerHTML = render(tt, "No matches found.")
                     }
                 } catch (ex) {
-                    el.innerHTML = render(tt, `Error: ${ex}.`)
+                    el.innerHTML = render(tt, `${ex}.`)
                 }
 
                 // we're done

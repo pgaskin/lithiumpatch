@@ -181,11 +181,13 @@ func (b *builder) run() error {
 		// shard size
 		binary.Write(w, binary.BigEndian, uint32(b.shardSize))
 
+		// number of buckets (i.e., max word length)
+		binary.Write(w, binary.BigEndian, uint32(len(b.indexBuckets)))
+
 		// bucket sizes
 		for _, x := range b.indexBuckets {
 			binary.Write(w, binary.BigEndian, uint32(len(x)))
 		}
-		binary.Write(w, binary.BigEndian, ^uint32(0))
 
 		// bucket words
 		for _, x := range b.indexBuckets {

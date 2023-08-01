@@ -158,13 +158,16 @@ globalThis["dict"] = function () {
         }
     }
 
-    class DictionaryResult {
+    class DictionaryResult extends Array {
         constructor(term, entries) {
+            super(...entries)
             this.term = term // term which matched
-            this.entries = entries
+            this.sortRelevance()
+        }
 
+        sortRelevance() {
             // sort the entries by relevance (since they aren't inherently ordered in the dictionary)
-            this.entries = this.entries.sort((a, b) => {
+            this.sort((a, b) => {
                 // exact matches
                 if (a.name == this.term && b.name != this.term)
                     return -1
@@ -220,8 +223,8 @@ globalThis["dict"] = function () {
             })
 
             // sort meaning groups by relevance
-            this.entries = this.entries.map(entry => {
-                entry.meaningGroups = entry.meaningGroups.sort((a, b) => {
+            for (const entry of this) {
+                entry.meaningGroups.sort((a, b) => {
                     const aVar = a.wordVariants.map(x => x.toLowerCase())
                     const bVar = b.wordVariants.map(x => x.toLowerCase())
 
@@ -233,8 +236,7 @@ globalThis["dict"] = function () {
 
                     return 0
                 })
-                return entry
-            })
+            }
         }
     }
 
@@ -288,17 +290,13 @@ globalThis["dict"] = function () {
         constructor(buf) {
             const dv = new DataView(buf)
 
-            let n = 4
+            let n = 8
             this.#shardSize = dv.getUint32(0)
+            this.#bucketCounts = new Array(dv.getUint32(4))
 
-            this.#bucketCounts = []
-            while (true) {
-                const count = dv.getUint32(n)
+            for (let i = 0; i < this.#bucketCounts.length; i++) {
+                this.#bucketCounts[i] = dv.getUint32(n)
                 n += 4
-                if (count == 0xFFFFFFFF) {
-                    break
-                }
-                this.#bucketCounts.push(count)
             }
 
             this.#bucketWords = this.#bucketCounts.map((count, bucket) => {
@@ -347,9 +345,11 @@ globalThis["dict"] = function () {
             }
 
             const refs = new Array(hi-lo+1)
-                .fill(0)
-                .map((v, idx) => indexes.getUint32((lo+idx)*4))
-                .map(ent => new DictionaryRef(Math.floor(ent/this.#shardSize), ent%this.#shardSize))
+            for (let i = lo; i <= hi; i++) {
+                const ent = indexes.getUint32(i*4)
+                const ref = new DictionaryRef(Math.floor(ent/this.#shardSize), ent%this.#shardSize)
+                refs[i-lo] = ref
+            }
             return refs
         }
 
@@ -411,25 +411,16 @@ globalThis["dict"] = function () {
         return [lo, hi]
     }
 
-
-    // https://github.com/JakeChampion/fetch/pull/92
     async function read(path) {
-        return new Promise((resolve, reject) => {
-            var xhr = new XMLHttpRequest()
-            xhr.responseType = "arraybuffer"
-            xhr.onload = () => {
-                if (xhr.status == 404) {
-                    reject(new Error(`${path} not found`))
-                } if (xhr.status != 200) {
-                    reject(new Error(`dict index response status ${xhr.status} (${xhr.statusText})`))
-                } else {
-                    resolve(xhr.response)
-                }
-            }
-            xhr.onerror = () => reject(new Error("failed to read file"))
-            xhr.open("GET", path)
-            xhr.send(null)
+        const resp = await fetch(path, {
+            cache: "no-store",
         })
+        if (resp.status == 404) {
+            throw new Error(`${path} not found`)
+        } else if (resp.status != 200) {
+            throw new Error(`dict index response status ${resp.status} (${resp.statusText})`)
+        }
+        return resp.arrayBuffer()
     }
 
     const cache = new Map()
