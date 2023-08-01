@@ -196,6 +196,7 @@ func init() {
 						<MultiSelectListPreference android:title="Disable dictionaries" android:key="dict_disabled" android:entries="@array/dict_names" android:entryValues="@array/dict_names" />
 						<SwitchPreferenceCompat android:title="Show examples" android:key="dict_show_examples" android:defaultValue="true" />
 						<SwitchPreferenceCompat android:title="Show word info" android:key="dict_show_info" android:defaultValue="true" />
+						<SwitchPreferenceCompat android:title="Use smaller font size" android:key="dict_small_font" android:defaultValue="false" />
 					</PreferenceCategory>
 				`),
 			),
@@ -275,6 +276,31 @@ func init() {
 					move-result-object v0
 
 					const-string v1, "dict_show_info"
+					const v2, 0x0
+					invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+					move-result v0
+
+					return v0
+				.end method
+				`),
+			),
+			ReplaceStringPrepend(
+				FixIndent("\n"+`
+				.method public onBookReady()V
+				`),
+				FixIndent("\n"+`
+				.method public getDictSmallFont()Z
+					.locals 3
+
+					.annotation runtime Landroid/webkit/JavascriptInterface;
+					.end annotation
+
+					iget-object v0, p0, Lcom/faultexception/reader/content/HtmlContentWebView$JsInterface;->this$0:Lcom/faultexception/reader/content/HtmlContentWebView;
+					iget-object v0, v0, Lcom/faultexception/reader/content/HtmlContentWebView;->mContext:Landroid/content/Context;
+					invoke-static {v0}, Landroid/preference/PreferenceManager;->getDefaultSharedPreferences(Landroid/content/Context;)Landroid/content/SharedPreferences;
+					move-result-object v0
+
+					const-string v1, "dict_small_font"
 					const v2, 0x0
 					invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
 					move-result v0

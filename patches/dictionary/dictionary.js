@@ -267,7 +267,7 @@ var Dictionary = (function() {
     }
 
     const render = (t, x) => !Array.isArray(x) ? html`
-        <div style=${{padding: "8px"}}>
+        <div style=${{padding: "8px", fontSize: !!settings.dict_small_font && ".85em"}}>
             <div style=${{fontSize: "1.14em", marginBottom: "4px"}}>
                 <span style=${{fontWeight: "bold"}}>${t}</span>${"\u00a0"}
             </div>
@@ -276,7 +276,7 @@ var Dictionary = (function() {
             </div>
         </div>
     ` : x.map((x, i) => html`
-        <div style=${{padding: "8px", borderTop: !!i && "1px solid rgba(128,128,128,0.4)"}}>
+        <div style=${{padding: "8px", borderTop: !!i && "1px solid rgba(128,128,128,0.4)", fontSize: !!settings.dict_small_font && ".85em"}}>
             <div style=${{fontSize: "1.14em", marginBottom: "4px"}}>
                 <span style=${{fontWeight: "bold"}}>${x.name}</span>
                 ${!!x.pronunciation && html`
@@ -329,6 +329,7 @@ var Dictionary = (function() {
         dict_disabled: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictDisabled().split(" ") : [],
         dict_show_examples: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictShowExamples() : true,
         dict_show_info: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictShowInfo() : true,
+        dict_small_font: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictSmallFont() : false,
     }
 
     const init = {
