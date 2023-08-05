@@ -102,9 +102,9 @@ export class Dictionary {
         }, shardCacheMax)
     }
 
-    async query(term, normalize = true) {
-        if (normalize) {
-            term = normalze(term)
+    async query(term, normalized = false) {
+        if (normalized) {
+            term = normalize(term)
         }
 
         // look up the word, plus some basic fallbacks
@@ -237,10 +237,10 @@ export class DictionaryEntry {
     constructor(w) {
         this.name = typeof w["w"] == "string" ? w["w"] : ""
         this.pronunciation = typeof w["p"] == "string" ? w["w"] : ""
-        this.meaningGroups = (typeof w["m"] == "object" ? w["m"] || []: []).map(m => ({
+        this.meaningGroups = (typeof w["m"] == "object" ? w["m"] || [] : []).map(m => ({
             info: typeof m["i"] == "object" ? m["i"] || []: [],
-            meanings: (typeof m["m"] == "object" ? m["m"] : []).map(m => ({
-                tags: typeof m["t"] == "object" ? m["t"] : [],
+            meanings: (typeof m["m"] == "object" ? m["m"] || [] : []).map(m => ({
+                tags: typeof m["t"] == "object" ? m["t"] || [] : [],
                 text: typeof m["x"] == "string" ? m["x"] : "",
                 examples: typeof m["s"] == "object" ? m["s"] || []: [],
             })),

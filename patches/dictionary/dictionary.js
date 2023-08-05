@@ -452,7 +452,7 @@ var Dictionary = (function() {
                                     throw new Error(`load ${n}: ${ex}`)
                                 }
                                 try {
-                                    var r = await d.query(tt, false)
+                                    var r = await d.query(tt, true)
                                 } catch (ex) {
                                     throw new Error(`query ${n}: ${ex}`)
                                 }
