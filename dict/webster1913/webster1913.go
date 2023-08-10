@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io"
 	"io/fs"
+	"regexp"
 	"strings"
 
 	"github.com/pgaskin/lithiumpatch/dict"
@@ -31,6 +32,8 @@ func init() {
 	}
 }
 
+var meaningTagRe = regexp.MustCompile(`^\s*\(((?:\s*[A-Za-z][A-Za-z0-9]+\.?\s*)+)\)\s*`)
+
 func Parse(r io.Reader) ([]dict.Entry, error) {
 	wbd, err := ParseDict(r)
 	if err != nil {
@@ -55,6 +58,10 @@ func Parse(r io.Reader) ([]dict.Entry, error) {
 		for _, m := range e.Meanings {
 			var ewmi dict.EntryMeaningItem
 			ewmi.Text = m.Text
+			if tmp := meaningTagRe.FindStringSubmatch(ewmi.Text); tmp != nil {
+				ewmi.Text = strings.TrimPrefix(ewmi.Text, tmp[0])
+				ewmi.Tags = append(ewmi.Tags, tmp[1])
+			}
 			if m.Example != "" {
 				ewmi.Examples = append(ewmi.Tags, m.Example)
 			}
