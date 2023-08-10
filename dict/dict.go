@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -74,7 +73,10 @@ func Register(name string, parse ParseFunc) {
 
 // Dicts gets the registered dictionary names.
 func Dicts() []string {
-	ds := maps.Keys(dict)
+	ds := make([]string, len(dict))[:0]
+	for k := range dict {
+		ds = append(ds, k)
+	}
 	slices.Sort(ds)
 	return ds
 }
