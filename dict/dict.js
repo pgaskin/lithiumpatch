@@ -83,7 +83,7 @@ export function normalize(term) {
 
     // remove unknown characters/diacritics
     // note: since we decomposed diacritics, this will leave the base char
-    term = term.split("").filter(c => `abcdefghiklmnopqrstuvwxyz0123456789 -'_.,`.includes(c)).join("")
+    term = term.split("").filter(c => `abcdefghijklmnopqrstuvwxyz0123456789 -'_.,`.includes(c)).join("")
 
     return term
 }
