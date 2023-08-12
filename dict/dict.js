@@ -91,7 +91,7 @@ export function normalize(term) {
 export class Dictionary {
     /** @type {string}                                      */ #base
     /** @type {DictionaryIndex}                             */ #index
-    /** @type {(shard: number) => Promise<DictionaryShard>} */ #getShardCached
+    /** @type {(shard: string) => Promise<DictionaryShard>} */ #getShardCached
 
     constructor(base, index, shardCacheMax = 14) {
         this.#base = base
@@ -103,7 +103,7 @@ export class Dictionary {
     }
 
     async query(term, normalized = false) {
-        if (normalized) {
+        if (!normalized) {
             term = normalize(term)
         }
 
@@ -119,10 +119,6 @@ export class Dictionary {
         }
         if (!refs.length) {
             term = term.replace(/-/g, "")
-            refs = this.#index.lookup(term)
-        }
-        if (!refs.length) {
-            term = term.replace(/$/, "-")
             refs = this.#index.lookup(term)
         }
         if (!refs.length) {
