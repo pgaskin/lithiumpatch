@@ -16,83 +16,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 class Dictionary {
-    public static String normalize(String term) {
-        // decompose accents and stuff
-        // convert similar characters with only stylistic differences
-        // other unicode normalization stuff
-        term = Normalizer.normalize(term, Normalizer.Form.NFKD);
-
-        // to lowercase (unicode-aware)
-        term = term.toLowerCase();
-
-        // normalize whitespace
-        term = term.trim().replaceAll("\\s+", " ");
-
-        Map<String, String> repl = new HashMap<String, String>() {{
-            // replace smart punctuation
-            put("\u00ab", "\"");
-            put("\u00bb", "\"");
-            put("\u2010", "-");
-            put("\u2011", "-");
-            put("\u2012", "-");
-            put("\u2013", "-");
-            put("\u2014", "-");
-            put("\u2015", "-");
-            put("\u2018", "'");
-            put("\u2019", "'");
-            put("\u201a", "'");
-            put("\u201b", "'");
-            put("\u201c", "\"");
-            put("\u201d", "\"");
-            put("\u201e", "\"");
-            put("\u201f", "\"");
-            put("\u2024", ".");
-            put("\u2032", "'");
-            put("\u2033", "\"");
-            put("\u2035", "'");
-            put("\u2036", "\"");
-            put("\u2038", "^");
-            put("\u2039", "'");
-            put("\u203a", "'");
-            put("\u204f", ";");
-
-            // expand ligatures
-            put("\ua74f", "oo");
-            put("\u00df", "ss");
-            put("\u00e6", "ae");
-            put("\u0153", "oe");
-            put("\ufb00", "ff");
-            put("\ufb01", "fi");
-            put("\ufb02", "fl");
-            put("\ufb03", "ffi");
-            put("\ufb04", "ffl");
-            put("\ufb05", "ft");
-            put("\ufb06", "st");
-            put("\u2025", "..");
-            put("\u2026", "...");
-            put("\u2042", "***");
-            put("\u2047", "??");
-            put("\u2048", "?!");
-            put("\u2049", "!?");
-        }};
-        StringBuffer b = new StringBuffer();
-        Matcher m = Pattern.compile(String.join("|", repl.keySet())).matcher(term);
-        while (m.find()) {
-            m.appendReplacement(b, repl.get(m.group()));
-        }
-        m.appendTail(b);
-        term = b.toString();
-
-        // normalize dashes
-        term = term.replaceAll("-+", "-");
-
-        // remove unknown characters/diacritics
-        // note: since we decomposed diacritics, this will leave the base char
-        term = term.replaceAll("[^abcdefghijklmnopqrstuvwxyz0123456789 -'_.,]", "");
-
-        return term;
-    }
-
     private final DictionaryFS fs;
     private final DictionaryIndex index;
     private final Map<String, DictionaryShard> cache;
@@ -130,9 +53,17 @@ class Dictionary {
         return this.query(term, false);
     }
 
+    private static final Pattern[] querySimplifyRe = new Pattern[]{
+        Pattern.compile("'s$"),
+        Pattern.compile("s$"),
+        Pattern.compile("-"),
+        Pattern.compile("ly$"),
+        Pattern.compile("ing$"),
+    };
+
     public DictionaryResult query(String term, boolean normalized) {
         if (!normalized) {
-            term = normalize(term);
+            term = DictionaryUtil.normalize(term);
         }
         if (term.length() == 0) {
             return null;
@@ -140,28 +71,13 @@ class Dictionary {
 
         DictionaryRef[] refs = this.index.lookup(term);
         if (refs.length == 0) {
-            term = term.replaceAll("'s", "");
-            refs = this.index.lookup(term);
-        }
-        if (refs.length == 0) {
-            term = term.replaceAll("s$", "");
-            refs = this.index.lookup(term);
-        }
-        if (refs.length == 0) {
-            term = term.replaceAll("-", "");
-            refs = this.index.lookup(term);
-        }
-        if (refs.length == 0) {
-            term = term.replaceAll("-", "");
-            refs = this.index.lookup(term);
-        }
-        if (refs.length == 0) {
-            term = term.replaceAll("ly$", "");
-            refs = this.index.lookup(term);
-        }
-        if (refs.length == 0) {
-            term = term.replaceAll("ing$", "");
-            refs = this.index.lookup(term);
+            for (final Pattern p : querySimplifyRe) {
+                term = p.matcher(term).replaceAll("");
+                refs = this.index.lookup(term);
+                if (refs.length != 0) {
+                    break;
+                }
+            }
         }
         if (refs.length == 0) {
             return null;
@@ -181,6 +97,93 @@ class Dictionary {
 
     public static Dictionary load(DictionaryFS fs) throws IOException {
         return new Dictionary(fs, ByteBuffer.wrap(fs.read("index")));
+    }
+}
+
+class DictionaryUtil {
+    private static final Pattern normalizeSpaceRe = Pattern.compile("\\s+");
+    private static final Map<String, String> normalizeRepl = new HashMap<String, String>() {{
+        // replace smart punctuation
+        put("\u00ab", "\"");
+        put("\u00bb", "\"");
+        put("\u2010", "-");
+        put("\u2011", "-");
+        put("\u2012", "-");
+        put("\u2013", "-");
+        put("\u2014", "-");
+        put("\u2015", "-");
+        put("\u2018", "'");
+        put("\u2019", "'");
+        put("\u201a", "'");
+        put("\u201b", "'");
+        put("\u201c", "\"");
+        put("\u201d", "\"");
+        put("\u201e", "\"");
+        put("\u201f", "\"");
+        put("\u2024", ".");
+        put("\u2032", "'");
+        put("\u2033", "\"");
+        put("\u2035", "'");
+        put("\u2036", "\"");
+        put("\u2038", "^");
+        put("\u2039", "'");
+        put("\u203a", "'");
+        put("\u204f", ";");
+
+        // expand ligatures
+        put("\ua74f", "oo");
+        put("\u00df", "ss");
+        put("\u00e6", "ae");
+        put("\u0153", "oe");
+        put("\ufb00", "ff");
+        put("\ufb01", "fi");
+        put("\ufb02", "fl");
+        put("\ufb03", "ffi");
+        put("\ufb04", "ffl");
+        put("\ufb05", "ft");
+        put("\ufb06", "st");
+        put("\u2025", "..");
+        put("\u2026", "...");
+        put("\u2042", "***");
+        put("\u2047", "??");
+        put("\u2048", "?!");
+        put("\u2049", "!?");
+    }};
+    private static final Pattern normalizeReplRe = Pattern.compile(String.join("|", normalizeRepl.keySet()));
+    private static final Pattern normalizeDashRe = Pattern.compile("-+");
+    private static final Pattern normalizeUnkRe = Pattern.compile("[^abcdefghijklmnopqrstuvwxyz0123456789 -'_.,]");
+
+    public static String normalize(String term) {
+        // decompose accents and stuff
+        // convert similar characters with only stylistic differences
+        // other unicode normalization stuff
+        term = Normalizer.normalize(term, Normalizer.Form.NFKD);
+
+        // to lowercase (unicode-aware)
+        term = term.toLowerCase();
+
+        // normalize whitespace
+        term = normalizeSpaceRe.matcher(term.trim()).replaceAll(" ");
+
+        // unicode replacements
+        // - replace smart punctuation
+        // - expand ligatures
+        StringBuffer b = new StringBuffer();
+        Matcher m = normalizeReplRe.matcher(term);
+        while (m.find()) {
+            m.appendReplacement(b, normalizeRepl.get(m.group()));
+        }
+        m.appendTail(b);
+        term = b.toString();
+
+        // normalize dashes
+        term = normalizeDashRe.matcher(term).replaceAll("");
+
+        // remove unknown characters/diacritics
+        // note: since we decomposed diacritics, this will leave the base char
+        term = normalizeUnkRe.matcher(term).replaceAll("");
+
+        return term;
     }
 }
 
