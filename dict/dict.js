@@ -230,20 +230,130 @@ export class DictionaryResult extends Array {
 }
 
 export class DictionaryEntry {
-    constructor(w) {
-        this.name = typeof w["w"] == "string" ? w["w"] : ""
-        this.pronunciation = typeof w["p"] == "string" ? w["w"] : ""
-        this.meaningGroups = (typeof w["m"] == "object" ? w["m"] || [] : []).map(m => ({
-            info: typeof m["i"] == "object" ? m["i"] || []: [],
-            meanings: (typeof m["m"] == "object" ? m["m"] || [] : []).map(m => ({
-                tags: typeof m["t"] == "object" ? m["t"] || [] : [],
-                text: typeof m["x"] == "string" ? m["x"] : "",
-                examples: typeof m["s"] == "object" ? m["s"] || []: [],
-            })),
-            wordVariants: typeof m["v"] == "object" ? m["v"] || []: [],
-        }))
-        this.info = typeof w["i"] == "string" ? w["i"] : ""
-        this.source = typeof w["s"] == "string" ? w["s"] : ""
+    constructor(buf) {
+        const dv = new DataView(buf)
+        const td = new TextDecoder("utf-8")
+        let n = 0
+
+        // Name
+        {
+            const len = dv.getUint32(n)
+            n += 4
+            this.name = td.decode(new Uint8Array(buf, n, len))
+            n += len
+        }
+
+        // Pronunciation
+        {
+            const len = dv.getUint32(n)
+            n += 4
+            this.pronunciation = td.decode(new Uint8Array(buf, n, len))
+            n += len
+        }
+
+        // MeaningGroups
+        {
+            const len = dv.getUint32(n)
+            n += 4
+            this.meaningGroups = new Array(len)
+            for (let i = 0; i < len; i++) {
+                this.meaningGroups[i] = {}
+
+                // Info
+                {
+                    const len = dv.getUint32(n)
+                    n += 4
+                    this.meaningGroups[i].info = new Array(len)
+                    for (let j = 0; j < len; j++) {
+
+                        // item
+                        const len = dv.getUint32(n)
+                        n += 4
+                        this.meaningGroups[i].info[j] = td.decode(new Uint8Array(buf, n, len))
+                        n += len
+                    }
+                }
+
+                // Meanings
+                {
+                    const len = dv.getUint32(n)
+                    n += 4
+                    this.meaningGroups[i].meanings = new Array(len)
+                    for (let j = 0; j < len; j++) {
+                        this.meaningGroups[i].meanings[j] = {}
+
+                        // Tags
+                        {
+                            const len = dv.getUint32(n)
+                            n += 4
+                            this.meaningGroups[i].meanings[j].tags = new Array(len)
+                            for (let k = 0; k < len; k++) {
+
+                                // item
+                                const len = dv.getUint32(n)
+                                n += 4
+                                this.meaningGroups[i].meanings[j].tags[k] = td.decode(new Uint8Array(buf, n, len))
+                                n += len
+                            }
+                        }
+
+                        // Text
+                        {
+                            const len = dv.getUint32(n)
+                            n += 4
+                            this.meaningGroups[i].meanings[j].text = td.decode(new Uint8Array(buf, n, len))
+                            n += len
+                        }
+
+                        // Examples
+                        {
+                            const len = dv.getUint32(n)
+                            n += 4
+                            this.meaningGroups[i].meanings[j].examples = new Array(len)
+                            for (let k = 0; k < len; k++) {
+
+                                // item
+                                const len = dv.getUint32(n)
+                                n += 4
+                                this.meaningGroups[i].meanings[j].examples[k] = td.decode(new Uint8Array(buf, n, len))
+                                n += len
+                            }
+                        }
+                    }
+                }
+
+                // WordVariants
+                {
+                    const len = dv.getUint32(n)
+                    n += 4
+                    this.meaningGroups[i].wordVariants = new Array(len)
+                    for (let j = 0; j < len; j++) {
+
+                        // item
+                        const len = dv.getUint32(n)
+                        n += 4
+                        this.meaningGroups[i].wordVariants[j] = td.decode(new Uint8Array(buf, n, len))
+                        n += len
+                    }
+                }
+            }
+        }
+
+        // Info
+        {
+            const len = dv.getUint32(n)
+            n += 4
+            this.info = td.decode(new Uint8Array(buf, n, len))
+            n += len
+        }
+
+        // Source
+        {
+            const len = dv.getUint32(n)
+            n += 4
+            this.source = td.decode(new Uint8Array(buf, n, len))
+            n += len
+        }
     }
 }
 
@@ -349,14 +459,12 @@ export class DictionaryIndex {
 
 export class DictionaryShard {
     /** @type {number[]}    */ #offsets
-    /** @type {TextDecoder} */ #dec
     /** @type {ArrayBuffer} */ #buf
 
     constructor(buf, shardSize) {
         const dv = new DataView(buf)
 
         this.#offsets = new Array(shardSize).fill(0).map((v, i) => dv.getUint32(i*4))
-        this.#dec = new TextDecoder("utf-8")
         this.#buf = buf
     }
 
@@ -364,7 +472,7 @@ export class DictionaryShard {
         if (index > this.#offsets.length) {
             return null
         }
-        return JSON.parse(this.#dec.decode(this.#buf.slice(this.#offsets[index], this.#offsets[index+1])))
+        return this.#buf.slice(this.#offsets[index], this.#offsets[index+1])
     }
 }
 

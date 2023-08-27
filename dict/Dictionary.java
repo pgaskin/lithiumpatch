@@ -1,3 +1,5 @@
+package net.pgaskin.dictionary;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -12,24 +14,8 @@ import java.util.LinkedHashMap;
 import java.util.function.IntUnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
-public class Dictionary {
-    private static final Map<Path, Dictionary> dictionaryCache = new HashMap<>();
-
-    public static Dictionary loadCached(Path base) throws IOException {
-        base = base.toAbsolutePath();
-        synchronized (dictionaryCache) {
-            Dictionary d = dictionaryCache.get(base);
-            if (d == null) {
-                d = Dictionary.load(base);
-                dictionaryCache.put(base, d);
-            }
-            return d;
-        }
-    }
-
+class Dictionary {
     public static String normalize(String term) {
         // decompose accents and stuff
         // convert similar characters with only stylistic differences
@@ -107,16 +93,16 @@ public class Dictionary {
         return term;
     }
 
-    private final Path base;
+    private final DictionaryFS fs;
     private final DictionaryIndex index;
     private final Map<String, DictionaryShard> cache;
 
-    Dictionary(Path base, ByteBuffer index) {
-        this(base, index, 14);
+    Dictionary(DictionaryFS fs, ByteBuffer index) {
+        this(fs, index, 14);
     }
 
-    Dictionary(Path base, ByteBuffer index, int shardCacheMax) {
-        this.base = base;
+    Dictionary(DictionaryFS fs, ByteBuffer index, int shardCacheMax) {
+        this.fs = fs;
         this.index = new DictionaryIndex(index);
         this.cache = new LinkedHashMap<String, DictionaryShard>(shardCacheMax + 1, .75F, true) {
             public boolean removeEldestEntry(Map.Entry eldest) {
@@ -130,7 +116,7 @@ public class Dictionary {
             DictionaryShard s = this.cache.get(shard);
             if (s == null) {
                 try {
-                    s = new DictionaryShard(ByteBuffer.wrap(Files.readAllBytes(base.resolve(shard))), this.index.shardSize());
+                    s = new DictionaryShard(ByteBuffer.wrap(fs.read(shard)), this.index.shardSize());
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -147,6 +133,9 @@ public class Dictionary {
     public DictionaryResult query(String term, boolean normalized) {
         if (!normalized) {
             term = normalize(term);
+        }
+        if (term.length() == 0) {
+            return null;
         }
 
         DictionaryRef[] refs = this.index.lookup(term);
@@ -190,8 +179,24 @@ public class Dictionary {
         return new DictionaryEntry(shard.get(ref.index()));
     }
 
-    public static Dictionary load(Path base) throws IOException {
-        return new Dictionary(base, ByteBuffer.wrap(Files.readAllBytes(base.resolve("index"))));
+    public static Dictionary load(DictionaryFS fs) throws IOException {
+        return new Dictionary(fs, ByteBuffer.wrap(fs.read("index")));
+    }
+}
+
+interface DictionaryFS {
+    byte[] read(String path) throws IOException;
+
+    class FileSystem implements DictionaryFS {
+        final Path base;
+
+        public FileSystem(Path base) {
+            this.base = base;
+        }
+
+        public byte[] read(String path) throws IOException {
+            return Files.readAllBytes(base.resolve(path));
+        }
     }
 }
 
@@ -271,106 +276,103 @@ class DictionaryResult extends ArrayList<DictionaryEntry> {
 }
 
 class DictionaryEntry {
-    final String name;
-    final String pronunciation;
-    final MeaningGroup[] meaningGroups;
-    final String info;
-    final String source;
+    public final String name;
+    public final String pronunciation;
+    public final MeaningGroup[] meaningGroups;
+    public final String info;
+    public final String source;
 
-    DictionaryEntry(JSONObject w) {
-        Object name = w.opt("w");
-        this.name = name instanceof String ? (String) name : "";
+    DictionaryEntry(ByteBuffer buf) {
 
-        Object pronunciation = w.opt("p");
-        this.pronunciation = pronunciation instanceof String ? (String) pronunciation : "";
+        // Name
+        final byte[] name = new byte[buf.getInt()];
+        buf.get(name);
+        this.name = new String(name, StandardCharsets.UTF_8);
 
-        Object meaningGroups = w.opt("m");
-        if (meaningGroups instanceof JSONArray) {
-            this.meaningGroups = new MeaningGroup[((JSONArray) meaningGroups).length()];
-            for (int j = 0; j < this.meaningGroups.length; j++) {
-                Object v = ((JSONArray) meaningGroups).get(j);
-                this.meaningGroups[j] = new MeaningGroup(v instanceof JSONObject ? (JSONObject) v : new JSONObject());
-            }
-        } else {
-            this.meaningGroups = new MeaningGroup[0];
+        // Pronunciation
+        final byte[] pronunciation = new byte[buf.getInt()];
+        buf.get(pronunciation);
+        this.pronunciation = new String(pronunciation, StandardCharsets.UTF_8);
+
+        // MeaningGroups
+        final int meaningGroups = buf.getInt();
+        this.meaningGroups = new MeaningGroup[meaningGroups];
+        for (int i = 0; i < meaningGroups; i++) {
+            this.meaningGroups[i] = new MeaningGroup(buf);
         }
 
-        Object info = w.opt("i");
-        this.info = info instanceof String ? (String) info : "";
+        // Info
+        final byte[] info = new byte[buf.getInt()];
+        buf.get(info);
+        this.info = new String(info, StandardCharsets.UTF_8);
 
-        Object source = w.opt("s");
-        this.source = source instanceof String ? (String) source : "";
+        // Pronunciation
+        final byte[] source = new byte[buf.getInt()];
+        buf.get(source);
+        this.source = new String(source, StandardCharsets.UTF_8);
     }
 
     static class MeaningGroup {
-        final String[] info;
-        final Meaning[] meanings;
-        final String[] wordVariants;
+        public final String[] info;
+        public final Meaning[] meanings;
+        public final String[] wordVariants;
 
-        MeaningGroup(JSONObject m) {
-            Object info = m.opt("i");
-            if (info instanceof JSONArray) {
-                this.info = new String[((JSONArray) info).length()];
-                for (int j = 0; j < this.info.length; j++) {
-                    Object v = ((JSONArray) info).get(j);
-                    this.info[j] = v instanceof String ? (String) v : "";
-                }
-            } else {
-                this.info = new String[0];
+        MeaningGroup(ByteBuffer buf) {
+
+            // Info
+            final int info = buf.getInt();
+            this.info = new String[info];
+            for (int i = 0; i < info; i++) {
+                final byte[] str = new byte[buf.getInt()];
+                buf.get(str);
+                this.info[i] = new String(str, StandardCharsets.UTF_8);
             }
 
-            Object meanings = m.opt("m");
-            if (meanings instanceof JSONArray) {
-                this.meanings = new Meaning[((JSONArray) meanings).length()];
-                for (int j = 0; j < this.meanings.length; j++) {
-                    Object v = ((JSONArray) meanings).get(j);
-                    this.meanings[j] = new Meaning(v instanceof JSONObject ? (JSONObject) v : new JSONObject());
-                }
-            } else {
-                this.meanings = new Meaning[0];
+            // Meanings
+            final int meanings = buf.getInt();
+            this.meanings = new Meaning[meanings];
+            for (int i = 0; i < meanings; i++) {
+                this.meanings[i] = new Meaning(buf);
             }
 
-            Object wordVariants = m.opt("v");
-            if (wordVariants instanceof JSONArray) {
-                this.wordVariants = new String[((JSONArray) wordVariants).length()];
-                for (int j = 0; j < this.wordVariants.length; j++) {
-                    Object vv = ((JSONArray) wordVariants).get(j);
-                    this.wordVariants[j] = vv instanceof String ? (String) vv : "";
-                }
-            } else {
-                this.wordVariants = new String[0];
+            // WordVariants
+            final int wordVariants = buf.getInt();
+            this.wordVariants = new String[wordVariants];
+            for (int i = 0; i < wordVariants; i++) {
+                final byte[] str = new byte[buf.getInt()];
+                buf.get(str);
+                this.wordVariants[i] = new String(str, StandardCharsets.UTF_8);
             }
         }
 
         static class Meaning {
-            final String[] tags;
-            final String text;
-            final String[] examples;
+            public final String[] tags;
+            public final String text;
+            public final String[] examples;
 
-            Meaning(JSONObject m) {
-                Object tags = m.opt("t");
-                if (tags instanceof JSONArray) {
-                    this.tags = new String[((JSONArray) tags).length()];
-                    for (int i = 0; i < this.tags.length; i++) {
-                        Object v = ((JSONArray) tags).get(i);
-                        this.tags[i] = v instanceof String ? (String) v : "";
-                    }
-                } else {
-                    this.tags = new String[0];
+            Meaning(ByteBuffer buf) {
+
+                // Tags
+                final int tags = buf.getInt();
+                this.tags = new String[tags];
+                for (int i = 0; i < tags; i++) {
+                    final byte[] str = new byte[buf.getInt()];
+                    buf.get(str);
+                    this.tags[i] = new String(str, StandardCharsets.UTF_8);
                 }
 
-                Object text = m.opt("x");
-                this.text = text instanceof String ? (String) text : "";
+                // Text
+                final byte[] text = new byte[buf.getInt()];
+                buf.get(text);
+                this.text = new String(text, StandardCharsets.UTF_8);
 
-                Object examples = m.opt("s");
-                if (examples instanceof JSONArray) {
-                    this.examples = new String[((JSONArray) examples).length()];
-                    for (int i = 0; i < this.examples.length; i++) {
-                        Object v = ((JSONArray) examples).get(i);
-                        this.examples[i] = v instanceof String ? (String) v : "";
-                    }
-                } else {
-                    this.examples = new String[0];
+                // Examples
+                final int examples = buf.getInt();
+                this.examples = new String[examples];
+                for (int i = 0; i < examples; i++) {
+                    final byte[] str = new byte[buf.getInt()];
+                    buf.get(str);
+                    this.examples[i] = new String(str, StandardCharsets.UTF_8);
                 }
             }
         }
@@ -515,10 +517,10 @@ class DictionaryShard {
         this.buf = buf;
     }
 
-    public JSONObject get(int index) {
+    public ByteBuffer get(int index) {
         ByteBuffer tmp = buf.slice();
         tmp.position(buf.position() + this.offsets[index]);
         tmp.limit(buf.position() + this.offsets[index + 1]);
-        return new JSONObject(StandardCharsets.UTF_8.decode(tmp).toString());
+        return tmp;
     }
 }

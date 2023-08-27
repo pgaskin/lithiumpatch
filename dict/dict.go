@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,12 +25,12 @@ var dictJS []byte
 //	Info
 //	Source
 type Entry struct {
-	Terms         []string       `json:"-"` // matched terms (will be normalized)
-	Name          string         `json:"w"`
-	Pronunciation string         `json:"p,omitempty"`
-	MeaningGroups []EntryMeaning `json:"m"`
-	Info          string         `json:"i,omitempty"` // e.g., etymology
-	Source        string         `json:"s,omitempty"`
+	Terms         []string       // matched terms (will be normalized)
+	Name          string         //
+	Pronunciation string         // optional
+	MeaningGroups []EntryMeaning //
+	Info          string         // optional; e.g., etymology
+	Source        string         // optional
 }
 
 // EntryMeaning contains the definitions for one sub-form of a word.
@@ -41,16 +40,16 @@ type Entry struct {
 //     Meanings[0].Example <-- can be disabled
 //  2. Meanings[*]
 type EntryMeaning struct {
-	Info         []string           `json:"i,omitempty"`
-	Meanings     []EntryMeaningItem `json:"m"`
-	WordVariants []string           `json:"v"` // for sorting results by relevance; not used for matching or display, so it can be imperfect (note that the headword is also checked first)
+	Info         []string           // optional
+	Meanings     []EntryMeaningItem //
+	WordVariants []string           // for sorting results by relevance; not used for matching or display, so it can be imperfect (note that the headword is also checked first)
 }
 
 // EntryMeaningItem contains a single definition.
 type EntryMeaningItem struct {
-	Tags     []string `json:"t,omitempty"`
-	Text     string   `json:"x"`
-	Examples []string `json:"s,omitempty"`
+	Tags     []string // optional
+	Text     string   //
+	Examples []string // optional
 }
 
 // JS gets the javascript for reading the parsed dictionaries.
@@ -213,29 +212,83 @@ func (b *builder) run() error {
 	// write the shards
 	for shard := 0; shard < (len(b.entries)+b.shardSize-1)/b.shardSize; shard++ {
 		if err := b.create(fmt.Sprintf("%03x", shard), func(w *bytes.Buffer) error {
-			// offsets
-			for index, offset := 0, 4*b.shardSize+4; index <= b.shardSize; index++ {
-				binary.Write(w, binary.BigEndian, uint32(offset))
+			buf := make([]byte, b.shardSize*4)
 
-				if shard*b.shardSize+index < len(b.entries) {
-					buf, err := json.Marshal(b.entries[shard*b.shardSize+index])
-					if err != nil {
-						return err
-					}
-					offset += len(buf)
+			for idx, e := range b.entries[shard*b.shardSize:] {
+				// offset
+				binary.BigEndian.PutUint32(buf[idx*4:], uint32(len(buf)))
+				if idx >= b.shardSize {
+					break
 				}
+
+				// Name
+				buf = binary.BigEndian.AppendUint32(buf, uint32(len(e.Name)))
+				buf = append(buf, e.Name...)
+
+				// Pronunciation
+				buf = binary.BigEndian.AppendUint32(buf, uint32(len(e.Pronunciation)))
+				buf = append(buf, e.Pronunciation...)
+
+				// MeaningGroups
+				buf = binary.BigEndian.AppendUint32(buf, uint32(len(e.MeaningGroups)))
+				for _, mg := range e.MeaningGroups {
+
+					// Info
+					buf = binary.BigEndian.AppendUint32(buf, uint32(len(mg.Info)))
+					for _, v := range mg.Info {
+
+						// item
+						buf = binary.BigEndian.AppendUint32(buf, uint32(len(v)))
+						buf = append(buf, v...)
+					}
+
+					// Meanings
+					buf = binary.BigEndian.AppendUint32(buf, uint32(len(mg.Meanings)))
+					for _, m := range mg.Meanings {
+
+						// Tags
+						buf = binary.BigEndian.AppendUint32(buf, uint32(len(m.Tags)))
+						for _, v := range m.Tags {
+
+							// item
+							buf = binary.BigEndian.AppendUint32(buf, uint32(len(v)))
+							buf = append(buf, v...)
+						}
+
+						// Text
+						buf = binary.BigEndian.AppendUint32(buf, uint32(len(m.Text)))
+						buf = append(buf, m.Text...)
+
+						// Examples
+						buf = binary.BigEndian.AppendUint32(buf, uint32(len(m.Examples)))
+						for _, v := range m.Examples {
+
+							// item
+							buf = binary.BigEndian.AppendUint32(buf, uint32(len(v)))
+							buf = append(buf, v...)
+						}
+					}
+
+					// WordVariants
+					buf = binary.BigEndian.AppendUint32(buf, uint32(len(mg.WordVariants)))
+					for _, v := range mg.WordVariants {
+
+						// item
+						buf = binary.BigEndian.AppendUint32(buf, uint32(len(v)))
+						buf = append(buf, v...)
+					}
+				}
+
+				// Info
+				buf = binary.BigEndian.AppendUint32(buf, uint32(len(e.Info)))
+				buf = append(buf, e.Info...)
+
+				// Source
+				buf = binary.BigEndian.AppendUint32(buf, uint32(len(e.Source)))
+				buf = append(buf, e.Source...)
 			}
 
-			// data
-			for index := 0; index < b.shardSize; index++ {
-				if shard*b.shardSize+index < len(b.entries) {
-					buf, err := json.Marshal(b.entries[shard*b.shardSize+index])
-					if err != nil {
-						return err
-					}
-					w.Write(buf)
-				}
-			}
+			w.Write(buf)
 
 			return nil
 		}); err != nil {
