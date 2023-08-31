@@ -212,7 +212,7 @@ func (b *builder) run() error {
 	// write the shards
 	for shard := 0; shard < (len(b.entries)+b.shardSize-1)/b.shardSize; shard++ {
 		if err := b.create(fmt.Sprintf("%03x", shard), func(w *bytes.Buffer) error {
-			buf := make([]byte, b.shardSize*4)
+			buf := make([]byte, (b.shardSize+1)*4)
 
 			for idx, e := range b.entries[shard*b.shardSize:] {
 				// offset
