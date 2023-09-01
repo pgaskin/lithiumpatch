@@ -177,7 +177,7 @@ class DictionaryUtil {
         term = b.toString();
 
         // normalize dashes
-        term = normalizeDashRe.matcher(term).replaceAll("");
+        term = normalizeDashRe.matcher(term).replaceAll("-");
 
         // remove unknown characters/diacritics
         // note: since we decomposed diacritics, this will leave the base char
