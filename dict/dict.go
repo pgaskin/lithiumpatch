@@ -15,7 +15,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-//go:embed dict.js
+//go:embed lib/dict.js
 var dictJS []byte
 
 // Entry contains a single result.
@@ -212,14 +212,15 @@ func (b *builder) run() error {
 	// write the shards
 	for shard := 0; shard < (len(b.entries)+b.shardSize-1)/b.shardSize; shard++ {
 		if err := b.create(fmt.Sprintf("%03x", shard), func(w *bytes.Buffer) error {
-			buf := make([]byte, (b.shardSize+1)*4)
+			buf := make([]byte, b.shardSize*4)
 
 			for idx, e := range b.entries[shard*b.shardSize:] {
-				// offset
-				binary.BigEndian.PutUint32(buf[idx*4:], uint32(len(buf)))
 				if idx >= b.shardSize {
 					break
 				}
+
+				// offset
+				binary.BigEndian.PutUint32(buf[idx*4:], uint32(len(buf)))
 
 				// Name
 				buf = binary.BigEndian.AppendUint32(buf, uint32(len(e.Name)))
@@ -312,115 +313,135 @@ func (b *builder) create(name string, fn func(w *bytes.Buffer) error) error {
 
 // Normalize reduces term to a limited set of ASCII characters.
 func Normalize(term string) string {
+	var (
+		n     strings.Builder
+		lastS = true // trim leading whitespace
+		lastD = false
+	)
+	n.Grow(len(term))
+
 	// decompose accents and stuff
 	// convert similar characters with only stylistic differences
+	// convert all whitespace to the ascii equivalent (incl nbsp,em-space,en-space,etc->space)
 	// other unicode normalization stuff
-	term = norm.NFKC.String(term)
-
 	// to lowercase (unicode-aware)
-	term = strings.ToLower(term)
+	for _, r := range norm.NFKD.String(term) {
+		r = unicode.ToLower(r)
 
-	// normalize whitespace
-	term = strings.Join(strings.FieldsFunc(term, unicode.IsSpace), " ")
-
-	// replace smart punctuation
-	term = strings.Map(func(r rune) rune {
+		// replace smart punctuation
 		switch r {
-		case '\u00ab':
-			return '"'
-		case '\u00bb':
-			return '"'
-		case '\u2010':
-			return '-'
-		case '\u2011':
-			return '-'
-		case '\u2012':
-			return '-'
-		case '\u2013':
-			return '-'
-		case '\u2014':
-			return '-'
-		case '\u2015':
-			return '-'
-		case '\u2018':
-			return '\''
-		case '\u2019':
-			return '\''
-		case '\u201a':
-			return '\''
-		case '\u201b':
-			return '\''
-		case '\u201c':
-			return '"'
-		case '\u201d':
-			return '"'
-		case '\u201e':
-			return '"'
-		case '\u201f':
-			return '"'
-		case '\u2024':
-			return '.'
-		case '\u2032':
-			return '\''
-		case '\u2033':
-			return '"'
-		case '\u2035':
-			return '\''
-		case '\u2036':
-			return '"'
-		case '\u2038':
-			return '^'
-		case '\u2039':
-			return '\''
-		case '\u203a':
-			return '\''
-		case '\u204f':
-			return ';'
+		case 0x00ab:
+			r = '"'
+		case 0x00bb:
+			r = '"'
+		case 0x2010:
+			r = '-'
+		case 0x2011:
+			r = '-'
+		case 0x2012:
+			r = '-'
+		case 0x2013:
+			r = '-'
+		case 0x2014:
+			r = '-'
+		case 0x2015:
+			r = '-'
+		case 0x2018:
+			r = '\''
+		case 0x2019:
+			r = '\''
+		case 0x201a:
+			r = '\''
+		case 0x201b:
+			r = '\''
+		case 0x201c:
+			r = '"'
+		case 0x201d:
+			r = '"'
+		case 0x201e:
+			r = '"'
+		case 0x201f:
+			r = '"'
+		case 0x2024:
+			r = '.'
+		case 0x2032:
+			r = '\''
+		case 0x2033:
+			r = '"'
+		case 0x2035:
+			r = '\''
+		case 0x2036:
+			r = '"'
+		case 0x2038:
+			r = '^'
+		case 0x2039:
+			r = '\''
+		case 0x203a:
+			r = '\''
+		case 0x204f:
+			r = ';'
+		}
+
+		// collapse whitespace
+		if r == 32 || (r >= 9 && r <= 12) {
+			if lastS {
+				continue
+			}
+			lastS = true
+			r = 32
+		} else {
+			lastS = false
+		}
+
+		// collapse dashes
+		if r == 45 {
+			if lastD {
+				continue
+			}
+			lastD = true
+		} else {
+			lastD = false
+		}
+
+		// expand ligatures
+		// remove unknown characters/diacritics
+		switch r {
+		case 0xa74f:
+			n.WriteString(`oo`)
+		case 0x00df:
+			n.WriteString(`ss`)
+		case 0x00e6:
+			n.WriteString(`ae`)
+		case 0x0153:
+			n.WriteString(`oe`)
+		case 0xfb00:
+			n.WriteString(`ff`)
+		case 0xfb01:
+			n.WriteString(`fi`)
+		case 0xfb02:
+			n.WriteString(`fl`)
+		case 0xfb03:
+			n.WriteString(`ffi`)
+		case 0xfb04:
+			n.WriteString(`ffl`)
+		case 0xfb05:
+			n.WriteString(`ft`)
+		case 0xfb06:
+			n.WriteString(`st`)
 		default:
-			return r
+			switch {
+			case 'a' <= r && r <= 'z':
+			case '0' <= r && r <= '9':
+			case r == ' ' || r == '-' || r == '\'' || r == '_' || r == '.' || r == ',':
+			default:
+				continue
+			}
+			n.WriteRune(r)
 		}
-	}, term)
-
-	// expand ligatures
-	term = strings.NewReplacer(
-		"\ua74f", `oo`,
-		"\u00df", `ss`,
-		"\u00e6", `ae`,
-		"\u0153", `oe`,
-		"\ufb00", `ff`,
-		"\ufb01", `fi`,
-		"\ufb02", `fl`,
-		"\ufb03", `ffi`,
-		"\ufb04", `ffl`,
-		"\ufb05", `ft`,
-		"\ufb06", `st`,
-		"\u2025", `..`,
-		"\u2026", `...`,
-		"\u2042", `***`,
-		"\u2047", `??`,
-		"\u2048", `?!`,
-		"\u2049", `!?`,
-	).Replace(term)
-
-	// normalize dashes
-	term = strings.Join(strings.FieldsFunc(term, func(r rune) bool {
-		return r == '-'
-	}), "-")
-
-	// remove unknown characters/diacritics
-	// note: since we decomposed diacritics, this will leave the base char
-	term = strings.Map(func(r rune) rune {
-		if 'a' <= r && r <= 'z' {
-			return r
-		}
-		if '0' <= r && r <= '9' {
-			return r
-		}
-		if r == ' ' || r == '-' || r == '\'' || r == '_' || r == '.' || r == ',' {
-			return r
-		}
-		return -1
-	}, term)
-
-	return term
+	}
+	if lastS && n.Len() != 0 {
+		// trim trailing whitespace
+		return n.String()[:n.Len()-1]
+	}
+	return n.String()
 }

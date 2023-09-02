@@ -386,7 +386,7 @@ var Dictionary = (function() {
         </section>
     `).join("")
 
-    import(init.dict).then(({default: dictionary, normalize}) => {
+    import(init.dict).then(({default: dictionary, Dictionary: Dictionary}) => {
         let dictReq
         let dictSem
         document.addEventListener("selectionchange", () => {
@@ -420,7 +420,7 @@ var Dictionary = (function() {
             }
 
             // set the initial popup contents
-            const tt = normalize(txt)
+            const tt = Dictionary.normalize(txt)
             const el = dictPopup.replace(render(tt, "Loading."))
 
             // show the popup
@@ -461,7 +461,7 @@ var Dictionary = (function() {
                         }))
 
                         // render the entries
-                        const ee = es.filter(e => e).flat()
+                        const ee = es.flat()
                         if (ee.length) {
                             el.innerHTML = render(tt, ee)
                         } else {
