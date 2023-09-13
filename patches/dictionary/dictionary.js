@@ -51,7 +51,8 @@ var Dictionary = (function() {
 
     /**
      * Listens for Lithium theme changes, returning true if successful. The first
-     * theme update is sent on DOMContentLoaded.
+     * theme update is sent on DOMContentLoaded. Note that the default white
+     * theme is null.
      */
     function hookLithiumTheme(callback) {
         if ("LithiumThemes" in globalThis) {
@@ -160,8 +161,14 @@ var Dictionary = (function() {
                 this.#popup.style.setProperty("background-color", bg !== undefined ? bg : dark ? "#333" : "#fff")
                 this.#popup.style.setProperty("color", fg !== undefined ? fg : dark ? "#eee" : "#000")
             }
+            applyTheme()
+
             if (!hookLithiumTheme(theme => {
-                applyTheme(theme.bgIsDark, hexColor(theme.backgroundColor), hexColor(theme.textColor))
+                if (theme) {
+                    applyTheme(theme.bgIsDark, hexColor(theme.backgroundColor), hexColor(theme.textColor))
+                } else {
+                    applyTheme()
+                }
             })) {
                 const matcher = window.matchMedia('(prefers-color-scheme: dark)')
                 if (matcher) {
@@ -169,8 +176,6 @@ var Dictionary = (function() {
                     matcher.addEventListener("change", ev => {
                         applyTheme(ev.matches)
                     })
-                } else {
-                    applyTheme()
                 }
             }
 
