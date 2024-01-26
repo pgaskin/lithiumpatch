@@ -340,17 +340,18 @@ func init() {
 				"\n"+`.field private mSeries:Ljava/lang/String;`,
 			),
 			InMethod("readOpfFile(Ljava/lang/String;)V",
-				MustContain(`iget-object v2, v1, Lcom/faultexception/reader/book/EPubBook;->mRendition:Lcom/faultexception/reader/book/Rendition;`), // ensure EPubBook is in v1
-				MustContain(`invoke-interface {v5}, Lorg/xmlpull/v1/XmlPullParser;->nextText()Ljava/lang/String;`),                                  // ensure XmlPullParser is in v5
-				MustContain(`const-string v8, "package/metadata/meta"`),                                                                             // links to a goto then a switch
-				// remember to make sure pswitch_4 comes from the switch table index of the package/metadata/meta
-				ReplaceStringAppend(
-					"\n"+`    :pswitch_4`,
-					"\n"+`    invoke-direct {v1, v5}, Lcom/faultexception/reader/book/EPubBook;->tryParseSeriesIndex(Lorg/xmlpull/v1/XmlPullParser;)V`,
-				),
-				ReplaceStringAppend(
-					"\n"+`    :pswitch_4`,
-					"\n"+`    invoke-direct {v1, v5}, Lcom/faultexception/reader/book/EPubBook;->tryParseSeries(Lorg/xmlpull/v1/XmlPullParser;)V`,
+				ReplaceStringPrepend(
+					FixIndent("\n"+`
+						iget-object v7, v1, Lcom/faultexception/reader/book/EPubBook;->mZip:Lcom/faultexception/reader/util/ZipFileCompat;
+
+						invoke-virtual {v7, v4}, Lcom/faultexception/reader/util/ZipFileCompat;->getInputStream(Ljava/util/zip/ZipEntry;)Ljava/io/InputStream;
+
+						move-result-object v4
+						:try_end_0
+					`),
+					FixIndent("\n"+`
+						invoke-direct {v1, v4}, Lcom/faultexception/reader/book/EPubBook;->parseSeries(Ljava/util/zip/ZipEntry;)V
+					`),
 				),
 			),
 			ReplaceStringPrepend(
@@ -358,40 +359,12 @@ func init() {
 				.method private readOpfFile(Ljava/lang/String;)V
 				`),
 				FixIndent("\n"+`
-				.method private tryParseMeta(Lorg/xmlpull/v1/XmlPullParser;Ljava/lang/String;)Ljava/lang/String;
-					.locals 2
-					# p0=book p1=parser p2=name-value-target v0=namespace/null-return v1=attr/value/cond
-					const/4 v0, 0x0
-					const-string v1, "name"
-					invoke-interface {p1, v0, v1}, Lorg/xmlpull/v1/XmlPullParser;->getAttributeValue(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-					move-result-object v1
-					if-eqz v1, :ret
-					invoke-virtual {v1, p2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
-					move-result v1
-					if-eqz v1, :ret
-					const-string v1, "content"
-					invoke-interface {p1, v0, v1}, Lorg/xmlpull/v1/XmlPullParser;->getAttributeValue(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-					move-result-object v1
-					return-object v1
-					:ret
-					return-object v0
-				.end method
-				`),
-			),
-			ReplaceStringPrepend(
-				FixIndent("\n"+`
-				.method private readOpfFile(Ljava/lang/String;)V
-				`),
-				FixIndent("\n"+`
-				.method private tryParseSeriesIndex(Lorg/xmlpull/v1/XmlPullParser;)V
+				.method private parseSeries(Ljava/util/zip/ZipEntry;)V
 					.locals 1
-					# p0=book p1=parser v0=name/content
-					const-string v0, "calibre:series_index"
-					invoke-direct {p0, p1, v0}, Lcom/faultexception/reader/book/EPubBook;->tryParseMeta(Lorg/xmlpull/v1/XmlPullParser;Ljava/lang/String;)Ljava/lang/String;
+					iget-object v0, p0, Lcom/faultexception/reader/book/EPubBook;->mZip:Lcom/faultexception/reader/util/ZipFileCompat;
+					invoke-virtual {v0, p1}, Lcom/faultexception/reader/util/ZipFileCompat;->getInputStream(Ljava/util/zip/ZipEntry;)Ljava/io/InputStream;
 					move-result-object v0
-					if-eqz v0, :ret
-					iput-object v0, p0, Lcom/faultexception/reader/book/EPubBook;->mSeriesIndex:Ljava/lang/String;
-					:ret
+					invoke-direct {p0, v0}, Lcom/faultexception/reader/book/EPubBook;->parseSeries(Ljava/io/InputStream;)Ljava/lang/String;
 					return-void
 				.end method
 				`),
@@ -400,17 +373,889 @@ func init() {
 				FixIndent("\n"+`
 				.method private readOpfFile(Ljava/lang/String;)V
 				`),
+				/*
+					// $ANDROID_HOME/build-tools/30.0.3/dx --dex --output SeriesParser.{dex,class}
+					// java -jar baksmali-2.5.2.jar d SeriesParser.dex
+
+					import org.xmlpull.v1.XmlPullParser;
+					import org.xmlpull.v1.XmlPullParserException;
+					import org.xmlpull.v1.XmlPullParserFactory;
+
+					import java.io.IOException;
+					import java.io.InputStream;
+					import java.nio.file.Files;
+					import java.nio.file.Paths;
+					import java.util.LinkedHashMap;
+					import java.util.LinkedHashSet;
+
+					public class SeriesParser {
+						public static void main(String[] args) {
+							try {
+								final SeriesParser p = new SeriesParser();
+								System.out.println(p.parseSeries(Files.newInputStream(Paths.get("package.opf"))));
+								System.out.println(p.mSeries + " #" + p.mSeriesIndex);
+							} catch (Exception ex) {
+								throw new RuntimeException(ex);
+							}
+						}
+
+						private String mSeries;
+						private String mSeriesIndex;
+
+						private String parseSeries(InputStream is) throws XmlPullParserException, IOException {
+							final XmlPullParser xpp = XmlPullParserFactory.newInstance().newPullParser(); // Landroid/util/Xml;->newPullParser()Lorg/xmlpull/v1/XmlPullParser;
+							xpp.setFeature("http://xmlpull.org/v1/doc/features.html#process-namespaces", true);
+							xpp.setInput(is, null);
+							final LinkedHashSet<String> hSeriesSkip = new LinkedHashSet<>();
+							final LinkedHashMap<String, String> hSeries = new LinkedHashMap<>();
+							final LinkedHashMap<String, String> hSeriesIndex = new LinkedHashMap<>();
+							hSeries.put(null, null); // calibre series metadata first
+							final StringBuilder txt = new StringBuilder();
+							for (int depth = 0, depthMatch = 0, evt = xpp.getEventType(); evt != XmlPullParser.END_DOCUMENT; ) {
+								switch (evt) {
+									case XmlPullParser.END_TAG:
+										if (depth-- < depthMatch) {
+											depthMatch--;
+										}
+										break;
+									case XmlPullParser.START_TAG:
+										if (depth++ == depthMatch) {
+											if ("http://www.idpf.org/2007/opf".equals(xpp.getNamespace())) {
+												switch (depth) {
+													case 1:
+														if ("package".equals(xpp.getName()))
+															depthMatch++;
+														break;
+													case 2:
+														if ("metadata".equals(xpp.getName()))
+															depthMatch++;
+														break;
+													case 3:
+														if ("meta".equals(xpp.getName()))
+															depthMatch++;
+														break;
+												}
+											}
+										}
+										// if we're at a package>metadata>meta
+										if (depthMatch == 3) {
+											// get the attributes we want
+											final String pName = xpp.getAttributeValue(null, "name");
+											final String pContent = xpp.getAttributeValue(null, "content");
+											final String pProperty = xpp.getAttributeValue(null, "property");
+											final String pId = xpp.getAttributeValue(null, "id");
+											final String pRefines = xpp.getAttributeValue(null, "refines");
+											// get the text within the element
+											txt.setLength(0);
+											for (evt = xpp.next(); !(depth == 3 && evt == XmlPullParser.END_TAG); evt = xpp.next()) {
+												switch (evt) {
+													case XmlPullParser.START_TAG:
+														depth++;
+														break;
+													case XmlPullParser.END_TAG:
+														depth--;
+														break;
+													case XmlPullParser.TEXT:
+														final String tmp = xpp.getText();
+														if (tmp != null) {
+															txt.append(tmp);
+														}
+														break;
+												}
+											}
+											// get an identifier (null for calibre metadata) and key/value meta pair
+											String vSrc, vKey, vValue;
+											if (pName != null) {
+												vSrc = null;
+												vKey = pName;
+												vValue = pContent;
+											} else {
+												if (pRefines != null && pRefines.startsWith("#")) {
+													vSrc = pRefines.substring(1);
+												} else if (pId != null) {
+													vSrc = pId;
+												} else {
+													vSrc = "";
+												}
+												vKey = pProperty;
+												vValue = txt.toString().trim();
+												if (vValue.isEmpty()) {
+													vValue = null;
+												}
+											}
+											// if we have a key/value pair, process it
+											if (vKey != null && vValue != null)
+												if ("calibre:series".equals(vKey) || "belongs-to-collection".equals(vKey))
+													hSeries.put(vSrc, vValue);
+												else if ("calibre:series_index".equals(vKey) || "group-position".equals(vKey))
+													hSeriesIndex.put(vSrc, vValue);
+												else if ("collection-type".equals(vKey) && !"series".equals(vValue))
+													hSeriesSkip.add(vSrc);
+											continue; // we already consumed the next token (END_TAG) in the txt loop
+										}
+										break;
+								}
+								evt = xpp.next();
+							}
+							// get the first series
+							for (final String src : hSeries.keySet()) {
+								final String series = hSeries.get(src);
+								if (series != null) {
+									final String seriesIndex = hSeriesIndex.get(src);
+									if (seriesIndex != null) {
+										if (!hSeriesSkip.contains(src)) {
+											mSeries = series; // Lcom/faultexception/reader/book/EPubBook;->mSeries:Ljava/lang/String;
+											mSeriesIndex = seriesIndex; // Lcom/faultexception/reader/book/EPubBook;->mSeriesIndex:Ljava/lang/String;
+											return src != null ? "#" + src : "calibre";
+										}
+									}
+								}
+							}
+							return null;
+						}
+					}
+				*/
 				FixIndent("\n"+`
-				.method private tryParseSeries(Lorg/xmlpull/v1/XmlPullParser;)V
-					.locals 1
-					# p0=book p1=parser v0=name/content
-					const-string v0, "calibre:series"
-					invoke-direct {p0, p1, v0}, Lcom/faultexception/reader/book/EPubBook;->tryParseMeta(Lorg/xmlpull/v1/XmlPullParser;Ljava/lang/String;)Ljava/lang/String;
-					move-result-object v0
-					if-eqz v0, :ret
-					iput-object v0, p0, Lcom/faultexception/reader/book/EPubBook;->mSeries:Ljava/lang/String;
-					:ret
-					return-void
+				.method private parseSeries(Ljava/io/InputStream;)Ljava/lang/String;
+					.registers 28
+					.param p1, "is"    # Ljava/io/InputStream;
+					.annotation system Ldalvik/annotation/Throws;
+						value = {
+							Lorg/xmlpull/v1/XmlPullParserException;,
+							Ljava/io/IOException;
+						}
+					.end annotation
+
+					.prologue
+					.line 30
+					invoke-static {}, Landroid/util/Xml;->newPullParser()Lorg/xmlpull/v1/XmlPullParser;
+
+					move-result-object v23
+
+					.line 31
+					.local v23, "xpp":Lorg/xmlpull/v1/XmlPullParser;
+					const-string v24, "http://xmlpull.org/v1/doc/features.html#process-namespaces"
+
+					const/16 v25, 0x1
+
+					invoke-interface/range {v23 .. v25}, Lorg/xmlpull/v1/XmlPullParser;->setFeature(Ljava/lang/String;Z)V
+
+					.line 32
+					const/16 v24, 0x0
+
+					move-object/from16 v0, v23
+
+					move-object/from16 v1, p1
+
+					move-object/from16 v2, v24
+
+					invoke-interface {v0, v1, v2}, Lorg/xmlpull/v1/XmlPullParser;->setInput(Ljava/io/InputStream;Ljava/lang/String;)V
+
+					.line 33
+					new-instance v9, Ljava/util/LinkedHashSet;
+
+					invoke-direct {v9}, Ljava/util/LinkedHashSet;-><init>()V
+
+					.line 34
+					.local v9, "hSeriesSkip":Ljava/util/LinkedHashSet;, "Ljava/util/LinkedHashSet<Ljava/lang/String;>;"
+					new-instance v7, Ljava/util/LinkedHashMap;
+
+					invoke-direct {v7}, Ljava/util/LinkedHashMap;-><init>()V
+
+					.line 35
+					.local v7, "hSeries":Ljava/util/LinkedHashMap;, "Ljava/util/LinkedHashMap<Ljava/lang/String;Ljava/lang/String;>;"
+					new-instance v8, Ljava/util/LinkedHashMap;
+
+					invoke-direct {v8}, Ljava/util/LinkedHashMap;-><init>()V
+
+					.line 36
+					.local v8, "hSeriesIndex":Ljava/util/LinkedHashMap;, "Ljava/util/LinkedHashMap<Ljava/lang/String;Ljava/lang/String;>;"
+					const/16 v24, 0x0
+
+					const/16 v25, 0x0
+
+					move-object/from16 v0, v24
+
+					move-object/from16 v1, v25
+
+					invoke-virtual {v7, v0, v1}, Ljava/util/LinkedHashMap;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+					.line 37
+					new-instance v19, Ljava/lang/StringBuilder;
+
+					invoke-direct/range {v19 .. v19}, Ljava/lang/StringBuilder;-><init>()V
+
+					.line 38
+					.local v19, "txt":Ljava/lang/StringBuilder;
+					const/4 v3, 0x0
+
+					.local v3, "depth":I
+					const/4 v5, 0x0
+
+					.local v5, "depthMatch":I
+					invoke-interface/range {v23 .. v23}, Lorg/xmlpull/v1/XmlPullParser;->getEventType()I
+
+					move-result v6
+
+					.local v6, "evt":I
+					move v4, v3
+
+					.end local v3    # "depth":I
+					.local v4, "depth":I
+					:goto_40
+					const/16 v24, 0x1
+
+					move/from16 v0, v24
+
+					if-eq v6, v0, :cond_199
+
+					.line 39
+					packed-switch v6, :pswitch_data_1f6
+
+					move v3, v4
+
+					.line 122
+					.end local v4    # "depth":I
+					.restart local v3    # "depth":I
+					:cond_4a
+					:goto_4a
+					invoke-interface/range {v23 .. v23}, Lorg/xmlpull/v1/XmlPullParser;->next()I
+
+					move-result v6
+
+					move v4, v3
+
+					.end local v3    # "depth":I
+					.restart local v4    # "depth":I
+					goto :goto_40
+
+					.line 41
+					:pswitch_50
+					add-int/lit8 v3, v4, -0x1
+
+					.end local v4    # "depth":I
+					.restart local v3    # "depth":I
+					if-ge v4, v5, :cond_4a
+
+					.line 42
+					add-int/lit8 v5, v5, -0x1
+
+					goto :goto_4a
+
+					.line 46
+					.end local v3    # "depth":I
+					.restart local v4    # "depth":I
+					:pswitch_57
+					add-int/lit8 v3, v4, 0x1
+
+					.end local v4    # "depth":I
+					.restart local v3    # "depth":I
+					if-ne v4, v5, :cond_6a
+
+					.line 47
+					const-string v24, "http://www.idpf.org/2007/opf"
+
+					invoke-interface/range {v23 .. v23}, Lorg/xmlpull/v1/XmlPullParser;->getNamespace()Ljava/lang/String;
+
+					move-result-object v25
+
+					invoke-virtual/range {v24 .. v25}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-eqz v24, :cond_6a
+
+					.line 48
+					packed-switch v3, :pswitch_data_1fe
+
+					.line 65
+					:cond_6a
+					:goto_6a
+					const/16 v24, 0x3
+
+					move/from16 v0, v24
+
+					if-ne v5, v0, :cond_4a
+
+					.line 67
+					const/16 v24, 0x0
+
+					const-string v25, "name"
+
+					invoke-interface/range {v23 .. v25}, Lorg/xmlpull/v1/XmlPullParser;->getAttributeValue(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+					move-result-object v12
+
+					.line 68
+					.local v12, "pName":Ljava/lang/String;
+					const/16 v24, 0x0
+
+					const-string v25, "content"
+
+					invoke-interface/range {v23 .. v25}, Lorg/xmlpull/v1/XmlPullParser;->getAttributeValue(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+					move-result-object v10
+
+					.line 69
+					.local v10, "pContent":Ljava/lang/String;
+					const/16 v24, 0x0
+
+					const-string v25, "property"
+
+					invoke-interface/range {v23 .. v25}, Lorg/xmlpull/v1/XmlPullParser;->getAttributeValue(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+					move-result-object v13
+
+					.line 70
+					.local v13, "pProperty":Ljava/lang/String;
+					const/16 v24, 0x0
+
+					const-string v25, "id"
+
+					invoke-interface/range {v23 .. v25}, Lorg/xmlpull/v1/XmlPullParser;->getAttributeValue(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+					move-result-object v11
+
+					.line 71
+					.local v11, "pId":Ljava/lang/String;
+					const/16 v24, 0x0
+
+					const-string v25, "refines"
+
+					invoke-interface/range {v23 .. v25}, Lorg/xmlpull/v1/XmlPullParser;->getAttributeValue(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+					move-result-object v14
+
+					.line 73
+					.local v14, "pRefines":Ljava/lang/String;
+					const/16 v24, 0x0
+
+					move-object/from16 v0, v19
+
+					move/from16 v1, v24
+
+					invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->setLength(I)V
+
+					.line 74
+					invoke-interface/range {v23 .. v23}, Lorg/xmlpull/v1/XmlPullParser;->next()I
+
+					move-result v6
+
+					:goto_a5
+					const/16 v24, 0x3
+
+					move/from16 v0, v24
+
+					if-ne v3, v0, :cond_b1
+
+					const/16 v24, 0x3
+
+					move/from16 v0, v24
+
+					if-eq v6, v0, :cond_fa
+
+					.line 75
+					:cond_b1
+					packed-switch v6, :pswitch_data_208
+
+					.line 74
+					:cond_b4
+					:goto_b4
+					invoke-interface/range {v23 .. v23}, Lorg/xmlpull/v1/XmlPullParser;->next()I
+
+					move-result v6
+
+					goto :goto_a5
+
+					.line 50
+					.end local v10    # "pContent":Ljava/lang/String;
+					.end local v11    # "pId":Ljava/lang/String;
+					.end local v12    # "pName":Ljava/lang/String;
+					.end local v13    # "pProperty":Ljava/lang/String;
+					.end local v14    # "pRefines":Ljava/lang/String;
+					:pswitch_b9
+					const-string v24, "package"
+
+					invoke-interface/range {v23 .. v23}, Lorg/xmlpull/v1/XmlPullParser;->getName()Ljava/lang/String;
+
+					move-result-object v25
+
+					invoke-virtual/range {v24 .. v25}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-eqz v24, :cond_6a
+
+					.line 51
+					add-int/lit8 v5, v5, 0x1
+
+					goto :goto_6a
+
+					.line 54
+					:pswitch_c8
+					const-string v24, "metadata"
+
+					invoke-interface/range {v23 .. v23}, Lorg/xmlpull/v1/XmlPullParser;->getName()Ljava/lang/String;
+
+					move-result-object v25
+
+					invoke-virtual/range {v24 .. v25}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-eqz v24, :cond_6a
+
+					.line 55
+					add-int/lit8 v5, v5, 0x1
+
+					goto :goto_6a
+
+					.line 58
+					:pswitch_d7
+					const-string v24, "meta"
+
+					invoke-interface/range {v23 .. v23}, Lorg/xmlpull/v1/XmlPullParser;->getName()Ljava/lang/String;
+
+					move-result-object v25
+
+					invoke-virtual/range {v24 .. v25}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-eqz v24, :cond_6a
+
+					.line 59
+					add-int/lit8 v5, v5, 0x1
+
+					goto :goto_6a
+
+					.line 77
+					.restart local v10    # "pContent":Ljava/lang/String;
+					.restart local v11    # "pId":Ljava/lang/String;
+					.restart local v12    # "pName":Ljava/lang/String;
+					.restart local v13    # "pProperty":Ljava/lang/String;
+					.restart local v14    # "pRefines":Ljava/lang/String;
+					:pswitch_e6
+					add-int/lit8 v3, v3, 0x1
+
+					.line 78
+					goto :goto_b4
+
+					.line 80
+					:pswitch_e9
+					add-int/lit8 v3, v3, -0x1
+
+					.line 81
+					goto :goto_b4
+
+					.line 83
+					:pswitch_ec
+					invoke-interface/range {v23 .. v23}, Lorg/xmlpull/v1/XmlPullParser;->getText()Ljava/lang/String;
+
+					move-result-object v18
+
+					.line 84
+					.local v18, "tmp":Ljava/lang/String;
+					if-eqz v18, :cond_b4
+
+					.line 85
+					move-object/from16 v0, v19
+
+					move-object/from16 v1, v18
+
+					invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+					goto :goto_b4
+
+					.line 92
+					.end local v18    # "tmp":Ljava/lang/String;
+					:cond_fa
+					if-eqz v12, :cond_128
+
+					.line 93
+					const/16 v21, 0x0
+
+					.line 94
+					.local v21, "vSrc":Ljava/lang/String;
+					move-object/from16 v20, v12
+
+					.line 95
+					.local v20, "vKey":Ljava/lang/String;
+					move-object/from16 v22, v10
+
+					.line 111
+					.local v22, "vValue":Ljava/lang/String;
+					:cond_102
+					:goto_102
+					if-eqz v20, :cond_1f3
+
+					if-eqz v22, :cond_1f3
+
+					.line 112
+					const-string v24, "calibre:series"
+
+					move-object/from16 v0, v24
+
+					move-object/from16 v1, v20
+
+					invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-nez v24, :cond_11e
+
+					const-string v24, "belongs-to-collection"
+
+					move-object/from16 v0, v24
+
+					move-object/from16 v1, v20
+
+					invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-eqz v24, :cond_157
+
+					.line 113
+					:cond_11e
+					move-object/from16 v0, v21
+
+					move-object/from16 v1, v22
+
+					invoke-virtual {v7, v0, v1}, Ljava/util/LinkedHashMap;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+					move v4, v3
+
+					.end local v3    # "depth":I
+					.restart local v4    # "depth":I
+					goto/16 :goto_40
+
+					.line 97
+					.end local v4    # "depth":I
+					.end local v20    # "vKey":Ljava/lang/String;
+					.end local v21    # "vSrc":Ljava/lang/String;
+					.end local v22    # "vValue":Ljava/lang/String;
+					.restart local v3    # "depth":I
+					:cond_128
+					if-eqz v14, :cond_14f
+
+					const-string v24, "#"
+
+					move-object/from16 v0, v24
+
+					invoke-virtual {v14, v0}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
+
+					move-result v24
+
+					if-eqz v24, :cond_14f
+
+					.line 98
+					const/16 v24, 0x1
+
+					move/from16 v0, v24
+
+					invoke-virtual {v14, v0}, Ljava/lang/String;->substring(I)Ljava/lang/String;
+
+					move-result-object v21
+
+					.line 104
+					.restart local v21    # "vSrc":Ljava/lang/String;
+					:goto_13c
+					move-object/from16 v20, v13
+
+					.line 105
+					.restart local v20    # "vKey":Ljava/lang/String;
+					invoke-virtual/range {v19 .. v19}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+					move-result-object v24
+
+					invoke-virtual/range {v24 .. v24}, Ljava/lang/String;->trim()Ljava/lang/String;
+
+					move-result-object v22
+
+					.line 106
+					.restart local v22    # "vValue":Ljava/lang/String;
+					invoke-virtual/range {v22 .. v22}, Ljava/lang/String;->isEmpty()Z
+
+					move-result v24
+
+					if-eqz v24, :cond_102
+
+					.line 107
+					const/16 v22, 0x0
+
+					goto :goto_102
+
+					.line 99
+					.end local v20    # "vKey":Ljava/lang/String;
+					.end local v21    # "vSrc":Ljava/lang/String;
+					.end local v22    # "vValue":Ljava/lang/String;
+					:cond_14f
+					if-eqz v11, :cond_154
+
+					.line 100
+					move-object/from16 v21, v11
+
+					.restart local v21    # "vSrc":Ljava/lang/String;
+					goto :goto_13c
+
+					.line 102
+					.end local v21    # "vSrc":Ljava/lang/String;
+					:cond_154
+					const-string v21, ""
+
+					.restart local v21    # "vSrc":Ljava/lang/String;
+					goto :goto_13c
+
+					.line 114
+					.restart local v20    # "vKey":Ljava/lang/String;
+					.restart local v22    # "vValue":Ljava/lang/String;
+					:cond_157
+					const-string v24, "calibre:series_index"
+
+					move-object/from16 v0, v24
+
+					move-object/from16 v1, v20
+
+					invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-nez v24, :cond_16f
+
+					const-string v24, "group-position"
+
+					move-object/from16 v0, v24
+
+					move-object/from16 v1, v20
+
+					invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-eqz v24, :cond_179
+
+					.line 115
+					:cond_16f
+					move-object/from16 v0, v21
+
+					move-object/from16 v1, v22
+
+					invoke-virtual {v8, v0, v1}, Ljava/util/LinkedHashMap;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+					move v4, v3
+
+					.end local v3    # "depth":I
+					.restart local v4    # "depth":I
+					goto/16 :goto_40
+
+					.line 116
+					.end local v4    # "depth":I
+					.restart local v3    # "depth":I
+					:cond_179
+					const-string v24, "collection-type"
+
+					move-object/from16 v0, v24
+
+					move-object/from16 v1, v20
+
+					invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-eqz v24, :cond_1f3
+
+					const-string v24, "series"
+
+					move-object/from16 v0, v24
+
+					move-object/from16 v1, v22
+
+					invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+					move-result v24
+
+					if-nez v24, :cond_1f3
+
+					.line 117
+					move-object/from16 v0, v21
+
+					invoke-virtual {v9, v0}, Ljava/util/LinkedHashSet;->add(Ljava/lang/Object;)Z
+
+					move v4, v3
+
+					.end local v3    # "depth":I
+					.restart local v4    # "depth":I
+					goto/16 :goto_40
+
+					.line 125
+					.end local v10    # "pContent":Ljava/lang/String;
+					.end local v11    # "pId":Ljava/lang/String;
+					.end local v12    # "pName":Ljava/lang/String;
+					.end local v13    # "pProperty":Ljava/lang/String;
+					.end local v14    # "pRefines":Ljava/lang/String;
+					.end local v20    # "vKey":Ljava/lang/String;
+					.end local v21    # "vSrc":Ljava/lang/String;
+					.end local v22    # "vValue":Ljava/lang/String;
+					:cond_199
+					invoke-virtual {v7}, Ljava/util/LinkedHashMap;->keySet()Ljava/util/Set;
+
+					move-result-object v24
+
+					invoke-interface/range {v24 .. v24}, Ljava/util/Set;->iterator()Ljava/util/Iterator;
+
+					move-result-object v24
+
+					:cond_1a1
+					invoke-interface/range {v24 .. v24}, Ljava/util/Iterator;->hasNext()Z
+
+					move-result v25
+
+					if-eqz v25, :cond_1f0
+
+					invoke-interface/range {v24 .. v24}, Ljava/util/Iterator;->next()Ljava/lang/Object;
+
+					move-result-object v17
+
+					check-cast v17, Ljava/lang/String;
+
+					.line 126
+					.local v17, "src":Ljava/lang/String;
+					move-object/from16 v0, v17
+
+					invoke-virtual {v7, v0}, Ljava/util/LinkedHashMap;->get(Ljava/lang/Object;)Ljava/lang/Object;
+
+					move-result-object v15
+
+					check-cast v15, Ljava/lang/String;
+
+					.line 127
+					.local v15, "series":Ljava/lang/String;
+					if-eqz v15, :cond_1a1
+
+					.line 128
+					move-object/from16 v0, v17
+
+					invoke-virtual {v8, v0}, Ljava/util/LinkedHashMap;->get(Ljava/lang/Object;)Ljava/lang/Object;
+
+					move-result-object v16
+
+					check-cast v16, Ljava/lang/String;
+
+					.line 129
+					.local v16, "seriesIndex":Ljava/lang/String;
+					if-eqz v16, :cond_1a1
+
+					.line 130
+					move-object/from16 v0, v17
+
+					invoke-virtual {v9, v0}, Ljava/util/LinkedHashSet;->contains(Ljava/lang/Object;)Z
+
+					move-result v25
+
+					if-nez v25, :cond_1a1
+
+					.line 131
+					move-object/from16 v0, p0
+
+					iput-object v15, v0, Lcom/faultexception/reader/book/EPubBook;->mSeries:Ljava/lang/String;
+
+					.line 132
+					move-object/from16 v0, v16
+
+					move-object/from16 v1, p0
+
+					iput-object v0, v1, Lcom/faultexception/reader/book/EPubBook;->mSeriesIndex:Ljava/lang/String;
+
+					.line 133
+					if-eqz v17, :cond_1ed
+
+					new-instance v24, Ljava/lang/StringBuilder;
+
+					invoke-direct/range {v24 .. v24}, Ljava/lang/StringBuilder;-><init>()V
+
+					const-string v25, "#"
+
+					invoke-virtual/range {v24 .. v25}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+					move-result-object v24
+
+					move-object/from16 v0, v24
+
+					move-object/from16 v1, v17
+
+					invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+					move-result-object v24
+
+					invoke-virtual/range {v24 .. v24}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+					move-result-object v24
+
+					.line 138
+					.end local v15    # "series":Ljava/lang/String;
+					.end local v16    # "seriesIndex":Ljava/lang/String;
+					.end local v17    # "src":Ljava/lang/String;
+					:goto_1ec
+					return-object v24
+
+					.line 133
+					.restart local v15    # "series":Ljava/lang/String;
+					.restart local v16    # "seriesIndex":Ljava/lang/String;
+					.restart local v17    # "src":Ljava/lang/String;
+					:cond_1ed
+					const-string v24, "calibre"
+
+					goto :goto_1ec
+
+					.line 138
+					.end local v15    # "series":Ljava/lang/String;
+					.end local v16    # "seriesIndex":Ljava/lang/String;
+					.end local v17    # "src":Ljava/lang/String;
+					:cond_1f0
+					const/16 v24, 0x0
+
+					goto :goto_1ec
+
+					.end local v4    # "depth":I
+					.restart local v3    # "depth":I
+					.restart local v10    # "pContent":Ljava/lang/String;
+					.restart local v11    # "pId":Ljava/lang/String;
+					.restart local v12    # "pName":Ljava/lang/String;
+					.restart local v13    # "pProperty":Ljava/lang/String;
+					.restart local v14    # "pRefines":Ljava/lang/String;
+					.restart local v20    # "vKey":Ljava/lang/String;
+					.restart local v21    # "vSrc":Ljava/lang/String;
+					.restart local v22    # "vValue":Ljava/lang/String;
+					:cond_1f3
+					move v4, v3
+
+					.end local v3    # "depth":I
+					.restart local v4    # "depth":I
+					goto/16 :goto_40
+
+					.line 39
+					:pswitch_data_1f6
+					.packed-switch 0x2
+						:pswitch_57
+						:pswitch_50
+					.end packed-switch
+
+					.line 48
+					:pswitch_data_1fe
+					.packed-switch 0x1
+						:pswitch_b9
+						:pswitch_c8
+						:pswitch_d7
+					.end packed-switch
+
+					.line 75
+					:pswitch_data_208
+					.packed-switch 0x2
+						:pswitch_e6
+						:pswitch_e9
+						:pswitch_ec
+					.end packed-switch
 				.end method
 				`),
 			),
