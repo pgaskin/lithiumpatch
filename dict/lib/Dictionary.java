@@ -87,7 +87,16 @@ public class Dictionary {
         return new DictionaryResult(term, res);
     }
 
-    public DictionaryEntry get(int entry) {
+    public DictionaryEntry[] lookup(String word) {
+        final int[] entries = this.index.lookup(word);
+        final DictionaryEntry[] res = new DictionaryEntry[entries.length];
+        for (int i = 0; i < entries.length; i++) {
+            res[i] = this.get(entries[i]);
+        }
+        return res;
+    }
+
+    private DictionaryEntry get(int entry) {
         final String name = String.format("%03x", entry / this.index.getShardSize());
         final DictionaryShard shard = this.shard.getShard(name);
         return shard.get(entry % this.index.getShardSize());

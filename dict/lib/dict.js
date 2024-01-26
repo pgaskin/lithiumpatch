@@ -71,11 +71,15 @@ export class Dictionary {
             return new DictionaryResult(origTerm);
         }
 
-        const res = await Promise.all(entries.map(x => this.get(x)))
+        const res = await Promise.all(entries.map(x => this.#get(x)))
         return new DictionaryResult(term, ...res)
     }
 
-    async get(entry) {
+    async lookup(word) {
+        return await Promise.all(this.#index.lookup(word).map(x => this.#get(x)))
+    }
+
+    async #get(entry) {
         const name = Math.floor(entry / this.#index.shardSize).toString(16).padStart(3, "0")
         const shard = await this.#shard(name)
         return shard.get(entry % this.#index.shardSize)
