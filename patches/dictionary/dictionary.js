@@ -5,7 +5,6 @@
 "use strict";
 
 var Dictionary = (function() {
-    const ENABLE_DEEP_SELECTION = true // if it acts funny, try disabling this
 
     /**
      * Symbol used by html to mark processed strings.
@@ -281,6 +280,210 @@ var Dictionary = (function() {
         }
     }
 
+    class SelectionController {
+        #selectionClearPending // timer
+
+        #deepSelectionRoot // element
+        #deepSelectionRootShadow // shadow root
+        #deepSelectionPointers = new Set() // of pointer IDs which are down inside the root
+        #deepSelectionWasLastSelection = false
+        #_handleDeepPointerAdd // bound event handler
+        #_handleDeepPointerDel // bound event handler
+        #_handleDeepClick // bound event handler
+
+        constructor() {
+            document.addEventListener("selectionchange", this.#handleSelectionChange.bind(this), false)
+        }
+
+        /** 
+         * Callback to check whether a range is valid for initial selections.
+         * Takes a Range, returns a boolean.
+         */
+        rangeValidate
+
+        /**
+         * Callback for when a valid range is selected. A selection is when the
+         * selected text changes (and is not in the deep selection root). Takes
+         * a Range (which is cloned).
+         */
+        rangeSelected
+
+        /**
+         * Callback for when a range is deep-selected. The range will have a
+         * length of zero. Takes a Range (which is cloned) and the selection
+         * anchorNode.
+         */
+        rangeSelectedDeep
+
+        /**
+         * Called when no range is selected anymore.
+         */
+        rangeCleared
+
+        /**
+         * Sets the root element used for deep selection. If the element is
+         * within a Shadow DOM, the shadow root must also be passed.
+         */
+        changeDeepSelectionRoot(el, shadowRoot = undefined) {
+            if (this.#deepSelectionRoot) {
+                this.#deepSelectionRoot.removeEventListener("pointerdown", this.#_handleDeepPointerAdd, false)
+                this.#deepSelectionRoot.removeEventListener("pointerup", this.#_handleDeepPointerDel, false)
+                this.#deepSelectionRoot.removeEventListener("pointercancel", this.#_handleDeepPointerDel, false)
+                this.#deepSelectionRoot.removeEventListener("pointerleave", this.#_handleDeepPointerDel, false)
+                this.#deepSelectionRoot.removeEventListener("pointerout", this.#_handleDeepPointerDel, false)
+                this.#deepSelectionRoot.removeEventListener("click", this.#_handleDeepClick, false)
+                this.#deepSelectionPointers.clear()
+                this.#deepSelectionRootShadow = undefined
+                this.#deepSelectionRoot = undefined
+            }
+            this.#deepSelectionRoot = el
+            this.#deepSelectionRootShadow = shadowRoot
+            if (this.#deepSelectionRoot) {
+                this.#_handleDeepPointerAdd = this.#handleDeepPointerAdd.bind(this)
+                this.#_handleDeepPointerDel = this.#handleDeepPointerDel.bind(this)
+                this.#_handleDeepClick = this.#handleDeepClick.bind(this)
+                this.#deepSelectionRoot.addEventListener("pointerdown", this.#_handleDeepPointerAdd, false)
+                this.#deepSelectionRoot.addEventListener("pointerup", this.#_handleDeepPointerDel, false)
+                this.#deepSelectionRoot.addEventListener("pointercancel", this.#_handleDeepPointerDel, false)
+                this.#deepSelectionRoot.addEventListener("pointerleave", this.#_handleDeepPointerDel, false)
+                this.#deepSelectionRoot.addEventListener("pointerout", this.#_handleDeepPointerDel, false)
+                this.#deepSelectionRoot.addEventListener("click", this.#_handleDeepClick, false)
+                // yes, we don't want handleDeepPointerAdd for pointerenter
+            }
+        }
+
+        #handleSelectionChange(event) {
+            // note: this gets called for zero-length selections (i.e., clicks)
+            // too, which is why it works for hiding it
+
+            // clear the previous clear timer
+            if (this.#selectionClearPending !== undefined) {
+                window.clearTimeout(this.#selectionClearPending)
+                this.#selectionClearPending = undefined
+            }
+
+            // get the selection
+            const sel = document.getSelection()
+
+            // ensure the selection didn't start within the deep selection root
+            if (sel && this.#deepSelectionRoot?.contains(sel.anchorNode)) {
+                return
+            }
+
+            let rng
+            if (sel?.rangeCount) {
+                // get the range
+                rng = sel.getRangeAt(0)
+            }
+            if (rng) {
+                // clone the range
+                rng = rng.cloneRange()
+            }
+            if (rng) {
+                // check if it's empty
+                if (!rng.toString().length) {
+                    rng = undefined
+                }
+            }
+            if (rng) {
+                // validate the range
+                if (this.rangeValidate && !this.rangeValidate(rng)) {
+                    rng = undefined
+                }
+            }
+            if (rng) {
+                // call the callback for a selection
+                this.rangeSelected?.(rng, false)
+            } else {
+                if (this.#deepSelectionRoot) {
+                    // add a short delay to give time for a deep selection to be
+                    // processed (i.e., don't mark the selection as cleared
+                    // while a deep selection might be in progress)
+                    this.#selectionClearPending = window.setTimeout(() => {
+                        if (!this.#deepSelectionPointers.size) {
+
+                            // save the deep selection flag
+                            const deepSelectionWasLastSelection = this.#deepSelectionWasLastSelection
+
+                            // reset the deep selection flag
+                            this.#deepSelectionWasLastSelection = false
+
+                            // call the callback for a cleared selection
+                            if (!deepSelectionWasLastSelection) {
+                                this.rangeCleared?.()
+                            }
+                        }
+                    }, 5)
+                } else {
+
+                    // save the deep selection flag
+                    const deepSelectionWasLastSelection = this.#deepSelectionWasLastSelection
+
+                    // reset the deep selection flag
+                    this.#deepSelectionWasLastSelection = false
+
+                    // call the callback for a cleared selection
+                    if (!deepSelectionWasLastSelection) {
+                        this.rangeCleared?.()
+                    }
+                }
+            }
+        }
+
+        #handleDeepPointerAdd(event) {
+            this.#deepSelectionPointers.add(event.pointerId)
+        }
+
+        #handleDeepPointerDel(event) {
+            this.#deepSelectionPointers.delete(event.pointerId)
+        }
+
+        #handleDeepClick(event) {
+            // clicking sets the selection for a non-user-select-none element
+            //
+            // note: this is usually a zero-length selection, but on chrome (as
+            // of 122), clicking on an existing selection will use that
+
+            // stop propagating the event
+            //
+            // note: this is especially important on Lithium to prevent the
+            // menus being shown when tapping the middle
+            event.stopPropagation()
+
+            // get the selection
+            const sel = this.#deepSelectionRootShadow?.getSelection
+                ? this.#deepSelectionRootShadow.getSelection() // non-standard, only supported on chrome
+                : window.getSelection();
+            
+            // ensure we have a selection
+            if (!sel?.rangeCount) {
+                return
+            }
+
+            // ensure the selection started within the deep selection root
+            if (!this.#deepSelectionRoot.contains(sel.anchorNode)) {
+                return
+            }
+
+            // get the range
+            let rng = sel.getRangeAt(0)
+
+            // normalize it to the start
+            rng.collapse(true)
+
+            // clone the range
+            rng = rng.cloneRange()
+
+            // set the deep selection flag to inhibit the next selection clear
+            // event (i.e., the one caused by de-selecting the first selection
+            // and doing the deep selection)
+            this.#deepSelectionWasLastSelection = true
+
+            // call the callback
+            this.rangeSelectedDeep?.(rng, sel.anchorNode)
+        }
+    }
+
     const settings = {
         dict_disabled: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictDisabled().split(" ") : [],
         dict_show_examples: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictShowExamples() : true,
@@ -336,6 +539,15 @@ var Dictionary = (function() {
             vertical-align: baseline;
             padding: .1em .25em;
             background-color: rgba(128,128,128,0.2);
+        }
+        section > ol.meaning-group-definitions > li > span.definition,
+        section > ol.meaning-group-definitions > li > div.example {
+            /*
+                for deep selection - we want this for each individual element so
+                clicking between them doesn't select the first word of the
+                nearest one
+            */
+            user-select: text;
         }
         section > ol.meaning-group-definitions > li > div.example {
             font-style: italic;
@@ -401,62 +613,34 @@ var Dictionary = (function() {
     `).join("")
 
     import(init.dict).then(({default: dictionary, Dictionary: Dictionary}) => {
-        let dictReq
-        let dictSem
-        let dictDeepHidePending
-        let dictDeepSelecting = new Set() // pointer IDs
-        const lookup = (txt, rng, isDeepLookup = false) => {
+        let dictSettle // timer
+        let dictSem // promise
+        let dictClientRect // function -> rect
 
-            if (ENABLE_DEEP_SELECTION) {
-                // clear the previous hide timer if it's a deep selection
-                if (isDeepLookup) {
-                    if (dictDeepHidePending !== undefined) {
-                        window.clearTimeout(dictDeepHidePending)
-                        dictDeepHidePending = undefined
-                    }
-                }
-
-                // reset the deep selection flag
-                dictDeepSelecting.clear()
-            }
-
-            // copy the range (so we have a constant reference to the rect)
-            rng = rng.cloneRange()
+        const lookup = (txt, deep) => {
 
             // set the initial popup contents
             const tt = Dictionary.normalize(txt)
             const el = dictPopup.replace(render(tt, "Loading."))
 
             // show the popup
-            if (dictPopup.show(false, () => rng.getBoundingClientRect()) || (ENABLE_DEEP_SELECTION && isDeepLookup)) {
+            if (dictPopup.show(false, dictClientRect) || deep) {
 
                 // if we're not modifying an existing selection (or it's a deep selection), discard the old semaphore
                 dictSem = Promise.resolve()
             }
 
             // wait for the selection to settle
-            //
-            // note: we still want the timeout even if it's a deep selection so
-            // the popup hide gets called before we show it again
-            const ownSettle = window.setTimeout(() => {
+            const ownSettle = dictSettle = window.setTimeout(() => {
 
                 // wait for the previous lookup to finish, then continue ours
                 dictSem = dictSem.finally(async () => {
 
                     // check if we've been replaced or canceled
-                    if (ownSettle !== dictReq) {
-                        if (ENABLE_DEEP_SELECTION && isDeepLookup) {
-                            // deep selection - we don't care if it's a deep selection
-                        } else {
-                            return
-                        }
-                    }
-
-                    if (ENABLE_DEEP_SELECTION) {
-                        // deep selection - if it's a deep selection, ensure the popup is visible
-                        if (isDeepLookup) {
-                            dictPopup.show(false, () => rng.getBoundingClientRect())
-                        }
+                    if (ownSettle === dictSettle) {
+                        dictSettle = undefined
+                    } else {
+                        return
                     }
 
                     // do stuff
@@ -489,168 +673,84 @@ var Dictionary = (function() {
                         el.innerHTML = render(tt, `${ex}.`)
                     }
 
-                    if (ENABLE_DEEP_SELECTION) {
-                        // deep selection - on chrome, if we drag a selection out of the popup,
-                        // the up/cancel events won't get called, so we need to do this
-                        el.addEventListener("pointerleave", e => {
-                            dictDeepSelecting.clear()
-                        })
-
-                        // deep selection - common event handler code
-                        const deepPointerAdd = e => {
-                            dictDeepSelecting.add(e.pointerId)
-                        }
-                        const deepPointerDel = e => {
-                            dictDeepSelecting.delete(e.pointerId)
-                        }
-                        const deepSelProc = e => {
-
-                            // cancel the event
-                            //
-                            // note: this is especially required on Lithium to
-                            // prevent the menus being shown when tapping the
-                            // middle
-                            e.stopPropagation()
-
-                            // get the selection within the popup
-                            var selection = dictPopup.shadowRoot.getSelection
-                                ? dictPopup.shadowRoot.getSelection() // chrome supports shadowRoot.getSelection
-                                : window.getSelection() // firefox includes shadow in window.getSelection
-
-                            // ensure we have a selection
-                            if (!selection || !selection.rangeCount) {
-                                return
-                            }
-
-                            // ensure the selection is within the popup
-                            if (!dictPopup.shadowRoot.contains(selection.anchorNode)) {
-                                return
-                            }
-
-                            // get the selection range
-                            const deepRng = selection.getRangeAt(0)
-                            const wordRe = /^\w*$/
-
-                            // collapse the range to the start
-                            //
-                            // note: this is required since chrome will select
-                            // the existing range if an existing selection is
-                            // clicked (firefox doesn't do this)
-                            deepRng.collapse(true)
-
-                            // extend the range backward until it matches word beginning
-                            while ((deepRng.startOffset > 0) && deepRng.toString().match(wordRe)) {
-                                deepRng.setStart(selection.anchorNode, deepRng.startOffset-1)
-                            }
-
-                            // restore the valid word match after overshooting
-                            if (!deepRng.toString().match(wordRe)) {
-                                deepRng.setStart(selection.anchorNode, deepRng.startOffset+1)
-                            }
-
-                            // extend the range forward until it matches word ending
-                            while ((deepRng.endOffset < selection.anchorNode.length) && deepRng.toString().match(wordRe)) {
-                                deepRng.setEnd(selection.anchorNode, deepRng.endOffset+1)
-                            }
-
-                            // restore the valid word match after overshooting
-                            if (!deepRng.toString().match(wordRe)) {
-                                deepRng.setEnd(selection.anchorNode, deepRng.endOffset-1)
-                            }
-
-                            // do a new lookup
-                            if (deepRng.toString().length && deepRng.toString().match(wordRe)) {
-                                // note: we use the old range on purpose for correct positioning
-                                lookup(deepRng.toString(), rng, true)
-                            }
-                        }
-
-                        // deep selection - add word click handlers
-                        for (const x of el.querySelectorAll(".definition, .example")) {
-
-                            // allow text selection within the element
-                            //
-                            // note: we want this for each individual element so
-                            // clicking between them doesn't select the first word
-                            // of the nearest one
-                            x.style.userSelect = "text"
-
-                            // add handlers to check if a selection is being made
-                            x.addEventListener("pointerdown", deepPointerAdd, false)
-                            x.addEventListener("pointerup", deepPointerAdd, false)
-                            x.addEventListener("pointercancel", deepPointerDel, false)
-
-                            // handle a selection being made by clicking a word
-                            x.addEventListener("click", deepSelProc, false)
-                        }
-                    }
-
-                    // we're done
-                    if (ownSettle === dictReq) {
-                        dictReq = undefined
-                    }
+                    // allow text selection within the element for deep selection
+                    //
+                    // note: we want this for each individual element so
+                    // clicking between them doesn't select the first word
+                    // of the nearest one
+                    controller.changeDeepSelectionRoot(el, dictPopup.shadowRoot)
                 })
-            }, 50)
-
-            // deep selection - if we're not doing a deep selection, unset the settle timer so it doesn't get canceled for blank selections
-            if (!ENABLE_DEEP_SELECTION || !isDeepLookup) {
-                dictReq = ownSettle
-            }
+            }, deep ? 0 : 50)
         }
-        document.addEventListener("selectionchange", () => {
-            // note: this gets called for zero-length selections (i.e., clicks) too, which is why it works for hiding it
 
-            if (ENABLE_DEEP_SELECTION) {
-                // deep selection - clear the previous hide timer
-                if (dictDeepHidePending !== undefined) {
-                    window.clearTimeout(dictDeepHidePending)
-                    dictDeepHidePending = undefined
-                }
+        const controller = new SelectionController()
+        controller.rangeValidate = rng => {
+            const txt = rng.toString()
+            if (txt.length < 1) {
+                return false
             }
-
-            // clear the previous settle timer
-            if (dictReq !== undefined) {
-                window.clearTimeout(dictReq)
-                dictReq = undefined
+            if (txt.length > 100) {
+                return false
             }
-
-            // get the current selection if it's valid for a lookup
-            let sel = document.getSelection()
-            let rng, txt
-            if (sel.rangeCount) {
-                rng = sel.getRangeAt(0)
-                txt = rng.toString()
+            if ((txt.match(/\s+/g) || []).length > 5) {
+                return false
             }
-            if (rng !== undefined && txt.length < 1) {
-                rng = undefined
-            }
-            if (rng !== undefined && txt.length > 100) {
-                rng = undefined
-            }
-            if (rng !== undefined && (txt.match(/\s+/g) || []).length > 5) {
-                rng = undefined
+            return true
+        }
+        controller.rangeCleared = () => {
+            // clear the settle timer
+            if (dictSettle !== undefined) {
+                window.clearTimeout(dictSettle)
+                dictSettle = undefined
             }
 
-            // if we don't have a valid selection, hide the popup
-            if (rng === undefined) {
-                if (ENABLE_DEEP_SELECTION) {
-                    // deep selection - add a short delay to give time for a deep
-                    // selection to be processed (i.e., ensure the pointer events
-                    // within get handled before this)
-                    dictDeepHidePending = window.setTimeout(() => {
-                        if (!dictDeepSelecting.size) {
-                            dictPopup.hide()
-                        }
-                    }, 5)
-                } else {
-                    dictPopup.hide()
-                }
+            // hide the popup
+            dictPopup.hide()
+        }
+        controller.rangeSelected = rng => {
+            // clear the settle timer
+            if (dictSettle !== undefined) {
+                window.clearTimeout(dictSettle)
+                dictSettle = undefined
+            }
+
+            // save the range location
+            dictClientRect = () => rng.getBoundingClientRect()
+
+            // do the lookup
+            lookup(rng.toString(), false)
+        }
+        controller.rangeSelectedDeep = (rng, anchorNode) => {
+            const re = /^\w*$/
+
+            // extend the range backward until it matches word beginning
+            while ((rng.startOffset > 0) && rng.toString().match(re)) {
+                rng.setStart(anchorNode, rng.startOffset-1)
+            }
+
+            // restore the valid word match after overshooting
+            if (!rng.toString().match(re)) {
+                rng.setStart(anchorNode, rng.startOffset+1)
+            }
+
+            // extend the range forward until it matches word ending
+            while ((rng.endOffset < anchorNode.length) && rng.toString().match(re)) {
+                rng.setEnd(anchorNode, rng.endOffset+1)
+            }
+
+            // restore the valid word match after overshooting
+            if (!rng.toString().match(re)) {
+                rng.setEnd(anchorNode, rng.endOffset-1)
+            }
+
+            // ignore it if it there's nothing left
+            if (!rng.toString().length || !rng.toString().match(re)) {
                 return
             }
 
-            // look up the word
-            lookup(txt, rng)
-        }, true)
+            // do the lookup
+            lookup(rng.toString(), true)
+        }
     })
 
     return dictPopup
