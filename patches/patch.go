@@ -8,6 +8,7 @@ import (
 
 	_ "github.com/pgaskin/lithiumpatch/patches/internal/cleanupunused"
 	_ "github.com/pgaskin/lithiumpatch/patches/internal/nofeedback"
+	_ "github.com/pgaskin/lithiumpatch/patches/internal/nosync"
 	_ "github.com/pgaskin/lithiumpatch/patches/internal/signature"
 	_ "github.com/pgaskin/lithiumpatch/patches/internal/version"
 )
