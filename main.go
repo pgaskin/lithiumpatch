@@ -13,7 +13,7 @@ import (
 
 	"github.com/pgaskin/lithiumpatch/dict"
 	"github.com/pgaskin/lithiumpatch/fonts"
-	_ "github.com/pgaskin/lithiumpatch/patches"
+	"github.com/pgaskin/lithiumpatch/patches"
 	"github.com/pgaskin/lithiumpatch/patches/patchdef"
 
 	"github.com/spf13/pflag"
@@ -21,8 +21,10 @@ import (
 	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
+var defaultKeySig = "06:7D:43:11:08:F8:ED:AF:24:71:7D:CE:D1:A3:01:D9:55:A3:A2:90"
+
 var (
-	Keystore           = pflag.StringP("keystore", "k", "keystore.jks", "Path to keystore for signing (will be created if does not exist)")
+	Keystore           = pflag.StringP("keystore", "k", "default.jks", "Path to keystore for signing (will be created if does not exist)")
 	KeystoreAlias      = pflag.String("keystore-alias", "default", "Keystore alias")
 	KeystorePassphrase = pflag.String("keystore-passphrase", "default", "Keystore passphrase")
 	Output             = pflag.StringP("output", "o", "", "Output APK path (default: {basename}.patched.resigned.apk)")
@@ -109,6 +111,55 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("create temp dir: %w", err)
 	}
 
+	fmt.Printf("> Looking for keystore %q\n", *Keystore)
+	if _, err := os.Stat(*Keystore); os.IsNotExist(err) {
+		fmt.Printf("> Generating keystore %q\n", *Keystore)
+		cmd := exec.CommandContext(ctx,
+			*Keytool, "-genkeypair", "-v",
+			"-keystore", *Keystore,
+			"-keyalg", "RSA",
+			"-storepass", *KeystorePassphrase,
+			"-alias", *KeystoreAlias,
+			"-validity", "3652",
+			"-dname", "CN=lithiumpatch",
+		)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("keytool: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("access keystore: %w", err)
+	}
+
+	fmt.Printf("> Reading keystore %q\n", *Keystore)
+	var b bytes.Buffer
+	cmd := exec.Command(
+		"keytool", "-list", "-v",
+		"-keystore", *Keystore,
+		"-keyalg", "RSA",
+		"-storepass", *KeystorePassphrase,
+		"-alias", *KeystoreAlias,
+	)
+	cmd.Stdout = &b
+	cmd.Stderr = &b
+	if err := cmd.Run(); err != nil {
+		fmt.Println(b.String())
+		return fmt.Errorf("keytool: %w", err)
+	}
+	m := regexp.MustCompile(`SHA1: *([A-Fa-f0-9:]+)`).FindStringSubmatch(b.String())
+	if len(m) != 2 {
+		fmt.Println(b.String())
+		return fmt.Errorf("could not find fingerprint in keytool output")
+	}
+	if m[1] == defaultKeySig {
+		patches.NoSync()
+		fmt.Fprintf(os.Stderr, "Found default signing key. This is insecure and will not support sync. You can specify a custom keystore using the --keystore option.\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "Found key with signature %s. This will need to be added as Google APIs app with access to the Drive API for sync to work.\n", m[1])
+	}
+
 	fmt.Printf("> Decompiling APK %q to %q\n", apk, disTmpDir)
 	if err := jar(ctx, *Apktool, "d", "-f", apk, "-o", disTmpDir); err != nil {
 		return fmt.Errorf("apktool: %w", err)
@@ -154,49 +205,6 @@ func run(ctx context.Context) error {
 			return fmt.Errorf("zipalign: %w", err)
 		}
 	}
-
-	fmt.Printf("> Looking for keystore %q\n", *Keystore)
-	if _, err := os.Stat(*Keystore); os.IsNotExist(err) {
-		fmt.Printf("> Generating keystore %q\n", *Keystore)
-		cmd := exec.CommandContext(ctx,
-			*Keytool, "-genkeypair", "-v",
-			"-keystore", *Keystore,
-			"-keyalg", "RSA",
-			"-storepass", *KeystorePassphrase,
-			"-alias", *KeystoreAlias,
-			"-dname", "CN=lithiumpatch, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=CA",
-		)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("keytool: %w", err)
-		}
-	} else if err != nil {
-		return fmt.Errorf("access keystore: %w", err)
-	}
-
-	fmt.Printf("> Reading keystore %q\n", *Keystore)
-	var b bytes.Buffer
-	cmd := exec.Command(
-		"keytool", "-list", "-v",
-		"-keystore", *Keystore,
-		"-keyalg", "RSA",
-		"-storepass", *KeystorePassphrase,
-		"-alias", *KeystoreAlias,
-	)
-	cmd.Stdout = &b
-	cmd.Stderr = &b
-	if err := cmd.Run(); err != nil {
-		fmt.Println(b.String())
-		return fmt.Errorf("keytool: %w", err)
-	}
-	m := regexp.MustCompile(`SHA1: *([A-Fa-f0-9:]+)`).FindStringSubmatch(b.String())
-	if len(m) != 2 {
-		fmt.Println(b.String())
-		return fmt.Errorf("could not find fingerprint in keytool output")
-	}
-	fmt.Fprintf(os.Stderr, "Found key with signature %s. This will need to be added as Google APIs app with access to the Drive API for sync to work.\n", m[1])
 
 	fmt.Printf("> Signing APK %q to %q\n", apkPatched, *Output)
 	if err := jar(ctx,

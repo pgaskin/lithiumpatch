@@ -1,14 +1,12 @@
-//go:build nosync
-
 // # Disable sync
 //
-// If built with the nosync tag, disables the sync functionality since it isn't
-// available unless a signing key is registered with Google APIs.
-package internal
+// If built with the default keystore, disables the sync functionality since it
+// isn't available unless a signing key is registered with Google APIs.
+package patches
 
 import . "github.com/pgaskin/lithiumpatch/patches/patchdef"
 
-func register() {
+func NoSync() {
 	Register("nosync",
 		PatchFile("res/xml/sync.xml",
 			ReplaceString(

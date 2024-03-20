@@ -26,7 +26,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 4. Optionally run `go run github.com/pgaskin/edgedict/cmd/edgedict-fetch --output dict/edgedict` to download additional dictionaries.
 5. Run `go generate ./app` from the root of the repository to download the APK. If this does not work, you can manually download the Lithium 0.24.5 APK from [here](https://www.apkmirror.com/apk/faultexception/lithium-epub-reader/lithium-epub-reader-0-24-5-release/lithium-epub-reader-0-24-5-android-apk-download/) or extract it from your device.
 6. Run `go run . app/Lithium_0.24.5.apk` from the root of the repository. Use `--help` to see additional options including using a custom keystore, setting the tool paths, and adding fonts from an external directory.
-7. If you haven't already done so, create a new Google APIs project with access to the Drive API for the signing key's signature to enable sync.
+7. For Google Drive support, specify a custom keystore with `--keystore whatever.jks`, and create a new Google APIs project with access to the Drive API for the signing key's signature to enable sync.
 
 ```
 usage: lithiumpatch [options] APK_PATH
