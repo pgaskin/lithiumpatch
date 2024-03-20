@@ -1,0 +1,36 @@
+name: lithium
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  patch:
+    name: patch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod'
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Write keystore
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/default.jks
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+        if: env.KEYSTORE_BASE64
+      - name: Download app
+        run: go generate ./app
+      - name: Download dictionaries
+        run: go run github.com/pgaskin/edgedict/cmd/edgedict-fetch --output dict/edgedict
+        continue-on-error: true
+      - name: Patch app
+        run: go run . app/*.apk
+      - uses: actions/upload-artifact@v3
+        with:
+          name: app-patched
+          path: app/*.patched.resigned.apk
