@@ -13,22 +13,8 @@ import (
 
 	"github.com/pgaskin/lithiumpatch/dict"
 	"github.com/pgaskin/lithiumpatch/fonts"
-	"github.com/pgaskin/lithiumpatch/patches"
-
-	_ "github.com/pgaskin/lithiumpatch/dict/edgedict"
-	_ "github.com/pgaskin/lithiumpatch/dict/webster1913"
-	_ "github.com/pgaskin/lithiumpatch/patches/color"
-	_ "github.com/pgaskin/lithiumpatch/patches/coversize"
-	_ "github.com/pgaskin/lithiumpatch/patches/coversonly"
-	_ "github.com/pgaskin/lithiumpatch/patches/debuggable"
-	_ "github.com/pgaskin/lithiumpatch/patches/dictionary"
-	_ "github.com/pgaskin/lithiumpatch/patches/extrafonts"
-	_ "github.com/pgaskin/lithiumpatch/patches/invertrotation"
-	_ "github.com/pgaskin/lithiumpatch/patches/minsize"
-	_ "github.com/pgaskin/lithiumpatch/patches/moretoolbaractions"
-	_ "github.com/pgaskin/lithiumpatch/patches/percentage"
-	_ "github.com/pgaskin/lithiumpatch/patches/seriesdrawer"
-	_ "github.com/pgaskin/lithiumpatch/patches/seriesmeta"
+	_ "github.com/pgaskin/lithiumpatch/patches"
+	"github.com/pgaskin/lithiumpatch/patches/patchdef"
 
 	"github.com/spf13/pflag"
 
@@ -36,7 +22,7 @@ import (
 )
 
 var (
-	Keystore           = pflag.StringP("keystore", "k", "keys/default.jks", "Path to keystore for signing (will be created if does not exist)")
+	Keystore           = pflag.StringP("keystore", "k", "keystore.jks", "Path to keystore for signing (will be created if does not exist)")
 	KeystoreAlias      = pflag.String("keystore-alias", "default", "Keystore alias")
 	KeystorePassphrase = pflag.String("keystore-passphrase", "default", "Keystore passphrase")
 	Output             = pflag.StringP("output", "o", "", "Output APK path (default: {basename}.patched.resigned.apk)")
@@ -130,7 +116,7 @@ func run(ctx context.Context) error {
 
 	fmt.Printf("> Patching\n")
 	diff := new(bytes.Buffer)
-	ps := patches.Get()
+	ps := patchdef.Patches()
 	for i, patch := range ps {
 		fmt.Printf("[%d/%d] %s\n", i+1, len(ps), patch.Name())
 		if err := patch.Apply(disTmpDir, diff); err != nil {

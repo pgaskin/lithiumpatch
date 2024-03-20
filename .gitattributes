@@ -1,1 +1,2 @@
 dict/webster1913/webster1913.txt linguist-vendored
+dict/edgedict/*.db linguist-vendored binary -delta

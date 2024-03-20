@@ -1,0 +1,6 @@
+*.apk
+*.apk.cache
+*.idsig
+*.jks
+/dict/edgedict/*.db
+/build
