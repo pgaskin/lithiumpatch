@@ -64,12 +64,14 @@ func main() {
 	for _, x := range fonts.All() {
 		fmt.Printf("... %s\n", x)
 	}
+	fmt.Println()
 
 	fmt.Printf("> Parsing dictionaries\n")
 	if err := dict.Parse(true); err != nil {
 		fmt.Fprintf(os.Stderr, "error: parse dictionaries: %v\n", err)
 		os.Exit(1)
 	}
+	fmt.Println()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -110,6 +112,7 @@ func run(ctx context.Context) error {
 	if err := os.Mkdir(disTmpDir, 0777); err != nil {
 		return fmt.Errorf("create temp dir: %w", err)
 	}
+	fmt.Println()
 
 	fmt.Printf("> Looking for keystore %q\n", *Keystore)
 	if _, err := os.Stat(*Keystore); os.IsNotExist(err) {
@@ -132,6 +135,7 @@ func run(ctx context.Context) error {
 	} else if err != nil {
 		return fmt.Errorf("access keystore: %w", err)
 	}
+	fmt.Println()
 
 	fmt.Printf("> Reading keystore %q\n", *Keystore)
 	var b bytes.Buffer
@@ -159,11 +163,13 @@ func run(ctx context.Context) error {
 	} else {
 		fmt.Fprintf(os.Stderr, "Found key with signature %s. This will need to be added as Google APIs app with access to the Drive API for sync to work.\n", m[1])
 	}
+	fmt.Println()
 
 	fmt.Printf("> Decompiling APK %q to %q\n", apk, disTmpDir)
 	if err := jar(ctx, *Apktool, "d", "-f", apk, "-o", disTmpDir); err != nil {
 		return fmt.Errorf("apktool: %w", err)
 	}
+	fmt.Println()
 
 	fmt.Printf("> Patching\n")
 	diff := new(bytes.Buffer)
@@ -182,12 +188,14 @@ func run(ctx context.Context) error {
 			return fmt.Errorf("write diff: %w", err)
 		}
 	}
+	fmt.Println()
 
 	apkPatched := filepath.Join(apkTmpDir, "patched.apk")
 	fmt.Printf("> Compiling APK to %q\n", apkPatched)
 	if err := jar(ctx, *Apktool, "b", "-f", disTmpDir, "-o", apkPatched); err != nil {
 		return fmt.Errorf("apktool: %w", err)
 	}
+	fmt.Println()
 
 	if _, err := exec.LookPath(*Zipalign); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: could not find zipalign, not zipaligning (memory usage will be higher during runtime)\n")
@@ -205,6 +213,7 @@ func run(ctx context.Context) error {
 			return fmt.Errorf("zipalign: %w", err)
 		}
 	}
+	fmt.Println()
 
 	fmt.Printf("> Signing APK %q to %q\n", apkPatched, *Output)
 	if err := jar(ctx,
@@ -219,7 +228,9 @@ func run(ctx context.Context) error {
 	); err != nil {
 		return fmt.Errorf("apksigner: %w", err)
 	}
+	fmt.Println()
 
+	fmt.Println("done")
 	return nil
 }
 
