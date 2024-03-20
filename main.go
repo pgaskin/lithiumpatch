@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/pgaskin/lithiumpatch/dict"
+	_ "github.com/pgaskin/lithiumpatch/dict/edgedict"
+	_ "github.com/pgaskin/lithiumpatch/dict/webster1913"
 	"github.com/pgaskin/lithiumpatch/fonts"
 	"github.com/pgaskin/lithiumpatch/patches"
 	"github.com/pgaskin/lithiumpatch/patches/patchdef"

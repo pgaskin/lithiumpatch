@@ -1,13 +1,13 @@
 module github.com/pgaskin/lithiumpatch
 
-go 1.21
+go 1.21.4
 
 require (
 	github.com/andybalholm/cascadia v1.3.2
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/ncruces/go-sqlite3 v0.13.0
-	github.com/pgaskin/edgedict v0.0.5
+	github.com/pgaskin/edgedict v0.0.6
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/net v0.22.0
 	golang.org/x/text v0.14.0
