@@ -26,7 +26,7 @@ jobs:
       - name: Download app
         run: go generate ./app
       - name: Download dictionaries
-        run: go run github.com/pgaskin/edgedict/cmd/edgedict-fetch --output dict/edgedict
+        run: go generate ./dict/edgedict
         continue-on-error: true
       - name: Patch app
         run: go run . app/*.apk

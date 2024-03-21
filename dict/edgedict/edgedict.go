@@ -11,7 +11,11 @@ import (
 
 	"github.com/pgaskin/edgedict"
 	"github.com/pgaskin/lithiumpatch/dict"
+
+	_ "github.com/pgaskin/xmlwriter" // needed for edgedict-fetch
 )
+
+//go:generate go run github.com/pgaskin/edgedict/cmd/edgedict-fetch
 
 //go:embed *
 var assets embed.FS
