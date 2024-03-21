@@ -7,7 +7,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/ncruces/go-sqlite3 v0.13.0
-	github.com/pgaskin/edgedict v0.0.8
+	github.com/pgaskin/edgedict v0.0.9
 	github.com/pgaskin/xmlwriter v0.0.4
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/net v0.22.0

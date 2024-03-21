@@ -10,6 +10,8 @@ github.com/ncruces/julianday v1.0.0 h1:fH0OKwa7NWvniGQtxdJRxAgkBMolni2BjDHaWTxqt
 github.com/ncruces/julianday v1.0.0/go.mod h1:Dusn2KvZrrovOMJuOt0TNXL6tB7U2E8kvza5fFc9G7g=
 github.com/pgaskin/edgedict v0.0.8 h1:9iS5K0PxK1lY1fz1vuJLGdDJExj4pX8bwgJt3hbFML8=
 github.com/pgaskin/edgedict v0.0.8/go.mod h1:qJ9hjQZeSQFVUy+k3F978+4O9zip/StgVv4FrGrfaDA=
+github.com/pgaskin/edgedict v0.0.9 h1:YnQPtrcTX5WHw4fa4ijzk1j9GZTotf9TX6otSfXhLeg=
+github.com/pgaskin/edgedict v0.0.9/go.mod h1:qJ9hjQZeSQFVUy+k3F978+4O9zip/StgVv4FrGrfaDA=
 github.com/pgaskin/xmlwriter v0.0.4 h1:lERCWcbECQXAHwCMpGcoCo9xEJDJ1NFikUmXXmtLlc4=
 github.com/pgaskin/xmlwriter v0.0.4/go.mod h1:deYcrlgx3MXg0eHPF2pmX8PWqny+6ZyQ3kxFe3IpfOU=
 github.com/psanford/httpreadat v0.1.0 h1:VleW1HS2zO7/4c7c7zNl33fO6oYACSagjJIyMIwZLUE=

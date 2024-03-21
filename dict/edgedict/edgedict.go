@@ -15,7 +15,7 @@ import (
 	_ "github.com/pgaskin/xmlwriter" // needed for edgedict-fetch
 )
 
-//go:generate go run github.com/pgaskin/edgedict/cmd/edgedict-fetch
+//go:generate go run github.com/pgaskin/edgedict/cmd/edgedict-fetch -f en-us -f en-gb
 
 //go:embed *
 var assets embed.FS
