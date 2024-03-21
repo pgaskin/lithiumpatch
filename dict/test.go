@@ -158,7 +158,7 @@ func main() {
 	}
 	if _, err := os.Stat("go.mod"); err == nil {
 		_ = os.Symlink("../dict/lib/dict.js", "build/dict.js")
-		_ = os.Symlink("../patches/dictionary/dictionary.js", "build/dictionary.js")
+		_ = os.Symlink("../patches/dictionary.js", "build/dictionary.js")
 	} else if err := os.WriteFile("build/dict.js", dict.JS(), 0666); err != nil {
 		panic(err)
 	}
