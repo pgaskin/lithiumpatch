@@ -8,8 +8,10 @@ github.com/ncruces/go-sqlite3 v0.13.0 h1:+N1VHVLnrCJasyXdAKQL9MNTKC3wHZa8pLMUuP8
 github.com/ncruces/go-sqlite3 v0.13.0/go.mod h1:y9zPUI+C42V9xuuJeN+tGhpOjr4gUHz2Pi2RLFVEdZg=
 github.com/ncruces/julianday v1.0.0 h1:fH0OKwa7NWvniGQtxdJRxAgkBMolni2BjDHaWTxqt7M=
 github.com/ncruces/julianday v1.0.0/go.mod h1:Dusn2KvZrrovOMJuOt0TNXL6tB7U2E8kvza5fFc9G7g=
-github.com/pgaskin/edgedict v0.0.6 h1:Afp3AISLiCsFCeTiVlGpA71JV6JNKhlSF8YpYLQcEZQ=
-github.com/pgaskin/edgedict v0.0.6/go.mod h1:ypIJtv9M57i7lp61wyMThRHskR52WsH8/x3T2QrvHtA=
+github.com/pgaskin/edgedict v0.0.7 h1:GWhIXmLa5RVw7J3MZcgFzbXY0BDoKnnYwhBVx/cAqyo=
+github.com/pgaskin/edgedict v0.0.7/go.mod h1:qJ9hjQZeSQFVUy+k3F978+4O9zip/StgVv4FrGrfaDA=
+github.com/pgaskin/xmlwriter v0.0.4 h1:lERCWcbECQXAHwCMpGcoCo9xEJDJ1NFikUmXXmtLlc4=
+github.com/pgaskin/xmlwriter v0.0.4/go.mod h1:deYcrlgx3MXg0eHPF2pmX8PWqny+6ZyQ3kxFe3IpfOU=
 github.com/psanford/httpreadat v0.1.0 h1:VleW1HS2zO7/4c7c7zNl33fO6oYACSagjJIyMIwZLUE=
 github.com/psanford/httpreadat v0.1.0/go.mod h1:Zg7P+TlBm3bYbyHTKv/EdtSJZn3qwbPwpfZ/I9GKCRE=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
