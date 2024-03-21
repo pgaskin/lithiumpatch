@@ -29,8 +29,7 @@ func main() {
 		fmt.Printf("info: verified apk %q\n", app.LithiumAPK)
 		return
 	}
-	fmt.Printf("info: downloading apk from %s\n", app.LithiumURL)
-	if b, err := internal.FetchAPK(app.LithiumURL); err != nil {
+	if b, err := fetch(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: failed to download apk: %v\n", err)
 		os.Exit(1)
 	} else if s := sha(b); s != app.LithiumSHA {
@@ -62,4 +61,22 @@ func shaFile(name string) (string, error) {
 
 	s := h.Sum(nil)
 	return hex.EncodeToString(s[:]), nil
+}
+
+func fetch() ([]byte, error) {
+	fmt.Printf("info: downloading apk from apkmirror %s\n", app.LithiumURL_APKM)
+	if b, err := internal.FetchAPK_APKM(app.LithiumURL_APKM); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: failed to download apk from apkmirror (error: %v)\n", err)
+	} else {
+		return b, nil
+	}
+
+	fmt.Printf("info: downloading apk from internet archive %s\n", app.LithiumURL_IA)
+	if b, err := internal.FetchAPK_IA(app.LithiumURL_IA); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: failed to download apk from internet archive (error: %v)\n", err)
+	} else {
+		return b, nil
+	}
+
+	return nil, fmt.Errorf("all sources failed")
 }

@@ -11,8 +11,8 @@ import (
 	"golang.org/x/net/html"
 )
 
-// FetchAPK fetches a single non-split APK from an APKMirror URL.
-func FetchAPK(url string) ([]byte, error) {
+// FetchAPK_APKM fetches a single non-split APK from an APKMirror URL.
+func FetchAPK_APKM(url string) ([]byte, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, fmt.Errorf("cookiejar: %w", err)
