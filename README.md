@@ -18,6 +18,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 - Support for inverted portrait/landscape rotation.
 - Expand display settings popup by default.
 - Support for hyphenation.
+- Additional built-in themes.
 
 ## Usage
 
