@@ -384,7 +384,9 @@ func FixIndent(s string) string {
 
 func ExecuteTemplate(tmpl string, data any) string {
 	var b bytes.Buffer
-	if err := template.Must(template.New("").Parse(tmpl)).Execute(&b, data); err != nil {
+	if err := template.Must(template.New("").Funcs(template.FuncMap{
+		"AddInt": func(i, j int) int { return i + j },
+	}).Parse(tmpl)).Execute(&b, data); err != nil {
 		panic(err)
 	}
 	return b.String()
