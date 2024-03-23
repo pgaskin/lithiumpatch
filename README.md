@@ -5,6 +5,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 ## Features
 
 - Custom icon color.
+- Monochrome adaptive icon support.
 - Custom cover aspect ratio.
 - Optional cover-only grid view.
 - Debuggable reader webview.
