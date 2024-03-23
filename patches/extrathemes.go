@@ -105,6 +105,28 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 	// - called by Backups theme restore
 	// - called by DatabaseOpenHelper migrations
 	// - note: not needed for our custom themes (see my comments above)
+	// - but we should probably rewrite it so it works for both while also being simpler
+	PatchFile("smali/com/faultexception/reader/themes/ThemeManager.smali",
+		InMethod("removeDuplicatedBuiltinThemes(Landroid/database/sqlite/SQLiteDatabase;)V",
+			ReplaceWith(FixIndent("\n"+`
+				.locals 2
+				move-object v0, p0
+				invoke-virtual {v0}, Landroid/database/sqlite/SQLiteDatabase;->beginTransaction()V
+				:try1_try
+				const-string v1, "DELETE FROM themes WHERE builtin = 1 AND _sync_id IS NOT NULL AND _sync_id != '' AND _id NOT IN (SELECT min(_id) FROM themes WHERE builtin = 1 AND _sync_id IS NOT NULL AND _sync_id != '' GROUP BY _sync_id);"
+				invoke-virtual {v0, v1}, Landroid/database/sqlite/SQLiteDatabase;->execSQL(Ljava/lang/String;)V
+				invoke-virtual {v0}, Landroid/database/sqlite/SQLiteDatabase;->setTransactionSuccessful()V
+				:try1_end
+				.catchall {:try1_try .. :try1_end} :try1_catch
+				invoke-virtual {v0}, Landroid/database/sqlite/SQLiteDatabase;->endTransaction()V
+				return-void
+				:try1_catch
+				move-exception v1
+				invoke-virtual {v0}, Landroid/database/sqlite/SQLiteDatabase;->endTransaction()V
+				throw v1
+			`)),
+		),
+	).Do(apk, diffwriter)
 
 	// ThemeManager addBuiltinThemesAsHidden
 	// - adds each of the three built-in themes if their boolean parameter is set
