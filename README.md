@@ -4,6 +4,8 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 
 ## Features
 
+- Requires Android Oreo (8) or higher.
+- Latest WebView (at least ~73) required for full functionality.
 - Custom icon color.
 - Monochrome adaptive icon support.
 - Dynamic grid view cover width and custom aspect ratio.

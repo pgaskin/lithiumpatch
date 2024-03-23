@@ -220,7 +220,7 @@ func run(ctx context.Context) error {
 	fmt.Printf("> Signing APK %q to %q\n", apkPatched, *Output)
 	if err := jar(ctx,
 		*Apksigner, "sign",
-		"--min-sdk-version", "23",
+		"--min-sdk-version", "26",
 		"--ks", *Keystore,
 		"--ks-pass", "pass:"+*KeystorePassphrase,
 		"--pass-encoding", "utf-8",
