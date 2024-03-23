@@ -20,6 +20,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 - Expand display settings popup by default.
 - Support for hyphenation.
 - Additional built-in themes.
+- Material You colors on Android 12+.
 
 ## Usage
 
