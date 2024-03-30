@@ -23,6 +23,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 - Support for hyphenation.
 - Additional built-in themes.
 - Material You colors on Android 12+.
+- Full-bleed background in fullscreen mode on devices with a notch.
 
 ## Usage
 
