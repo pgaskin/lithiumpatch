@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -12,7 +13,7 @@ import (
 	"github.com/golang/freetype/truetype"
 )
 
-//go:embed *.ttf
+//go:embed *.ttf */*.ttf
 var embedded embed.FS
 
 func init() {
@@ -75,9 +76,18 @@ func LoadFrom(fsys fs.FS) (int, error) {
 		case "Regular", "Roman":
 			f.Name = ff
 			f.Base = naRe.ReplaceAllLiteralString(ff, "")
-			f.Script = FontScriptAll.Filter(func(c rune) bool {
-				return ttf.Index(c) != 0
-			})
+			switch filepath.Dir(path) {
+			case "latin":
+				f.Script = FontScriptLatin
+			case "cyrillic":
+				f.Script = FontScriptCyrillic
+			case "greek":
+				f.Script = FontScriptGreek
+			default:
+				f.Script = FontScriptAll.Filter(func(c rune) bool {
+					return ttf.Index(c) != 0
+				})
+			}
 			if f.Regular != nil {
 				return fmt.Errorf("process %q: already have font face %q %s", path, fsf, ff)
 			}
