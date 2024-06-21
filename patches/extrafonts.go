@@ -149,6 +149,7 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 					{fonts.FontScriptLatin, []string{"eng", "en"}},
 					{fonts.FontScriptCyrillic, []string{"rus", "ru"}},
 					{fonts.FontScriptGreek, []string{"gre", "ell", "el"}},
+					{fonts.FontScriptThai, []string{"tha", "th"}},
 					// default is any
 				})),
 			),

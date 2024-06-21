@@ -165,10 +165,11 @@ func All() []Font {
 type Script uint
 
 const (
-	FontScriptAll      Script = FontScriptLatin | FontScriptCyrillic | FontScriptGreek
+	FontScriptAll      Script = FontScriptLatin | FontScriptCyrillic | FontScriptGreek | FontScriptThai
 	FontScriptLatin    Script = 1
 	FontScriptCyrillic Script = 2
 	FontScriptGreek    Script = 4
+	FontScriptThai     Script = 8
 )
 
 func (s Script) String() string {
@@ -181,6 +182,9 @@ func (s Script) String() string {
 	}
 	if s&FontScriptGreek != 0 {
 		b = append(b, "Greek")
+	}
+	if s&FontScriptThai != 0 {
+		b = append(b, "Thai")
 	}
 	return strings.Join(b, "|")
 }
@@ -204,6 +208,13 @@ func (s Script) Filter(fn func(rune) bool) Script {
 		for _, c := range "ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσΤτΥυΦφΧχΨψΩω" {
 			if !fn(c) {
 				s ^= FontScriptGreek
+			}
+		}
+	}
+	if s&FontScriptThai != 0 {
+		for _, c := range "กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮะาเแโใไฤๅฦๆ" {
+			if !fn(c) {
+				s ^= FontScriptThai
 			}
 		}
 	}
