@@ -79,7 +79,7 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 				{{- else -}}
 				const/4 v5, 0x0
 				{{- end}}
-				const/4 v6, {{.Script.Flags | printf "%#x"}} # {{.Script}}
+				const/16 v6, {{.Script.Flags | printf "%#x"}} # {{.Script}}
 
 				new-instance v0, Lcom/faultexception/reader/fonts/Font;
 				invoke-direct/range {v0 .. v6}, Lcom/faultexception/reader/fonts/Font;-><init>(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)V
@@ -88,6 +88,70 @@ func (extrafonts) Do(apk string, diffwriter io.Writer) error {
 				return-void
 			.end method
 			`, xs)),
+		),
+		InMethod("getCompatibleFonts(Ljava/lang/String;)Ljava/util/List;",
+			ReplaceWith(
+				FixIndent(ExecuteTemplate("\n"+`
+					.locals 5
+
+					const-string v0, "-"
+					invoke-virtual {p0, v0}, Ljava/lang/String;->split(Ljava/lang/String;)[Ljava/lang/String;
+					move-result-object p0
+
+					const v0, 0
+					aget-object p0, p0, v0
+					invoke-virtual {p0}, Ljava/lang/String;->toLowerCase()Ljava/lang/String;
+					move-result-object p0
+
+					{{range $x := .}}
+					{{range $x.Language}}
+					const-string v0, "{{.}}"
+					invoke-virtual {p0, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+					move-result v0
+					const/16 v4, {{$x.Script.Flags | printf "%#x"}} # {{$x.Script}}
+					if-nez v0, :filter
+					{{- end}}
+					{{- end}}
+
+					const/16 v4, 0 # any (default)
+
+					:filter
+					new-instance v0, Ljava/util/ArrayList;
+					invoke-direct {v0}, Ljava/util/ArrayList;-><init>()V
+
+					invoke-static {}, Lcom/faultexception/reader/fonts/Fonts;->getFonts()Ljava/util/List;
+					move-result-object v1
+					invoke-interface {v1}, Ljava/util/List;->iterator()Ljava/util/Iterator;
+					move-result-object v1
+
+					:filter_next
+					invoke-interface {v1}, Ljava/util/Iterator;->hasNext()Z
+					move-result v2
+					if-eqz v2, :filter_done
+
+					invoke-interface {v1}, Ljava/util/Iterator;->next()Ljava/lang/Object;
+					move-result-object v2
+					check-cast v2, Lcom/faultexception/reader/fonts/Font;
+
+					iget v3, v2, Lcom/faultexception/reader/fonts/Font;->scripts:I
+					and-int/2addr v3, v4
+					if-ne v3, v4, :filter_next
+
+					invoke-interface {v0, v2}, Ljava/util/List;->add(Ljava/lang/Object;)Z
+					goto :filter_next
+				
+					:filter_done
+					return-object v0
+				`, []struct {
+					Script   fonts.Script
+					Language []string
+				}{
+					{fonts.FontScriptLatin, []string{"eng", "en"}},
+					{fonts.FontScriptCyrillic, []string{"rus", "ru"}},
+					{fonts.FontScriptGreek, []string{"gre", "ell", "el"}},
+					// default is any
+				})),
+			),
 		),
 	))
 	for _, x := range pt {
