@@ -138,8 +138,8 @@ func FetchAPK_APKM(url string) ([]byte, error) {
 			return nil, fmt.Errorf("response status %d (%s)", resp.StatusCode, resp.Status)
 		}
 
-		if a, e := resp.Header.Get("Content-Type"), "application/vnd.android.package-archive"; a != e {
-			return nil, fmt.Errorf("got content type %q, expected %q", a, e)
+		if a, e, e1 := resp.Header.Get("Content-Type"), "application/vnd.android.package-archive", "application/octet-stream"; a != e && a != e1 {
+			return nil, fmt.Errorf("got content type %q, expected %q or %q", a, e, e1)
 		}
 		return io.ReadAll(resp.Body)
 	}()
