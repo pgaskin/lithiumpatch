@@ -83,6 +83,8 @@ func LoadFrom(fsys fs.FS) (int, error) {
 				f.Script = FontScriptCyrillic
 			case "greek":
 				f.Script = FontScriptGreek
+			case "thai":
+				f.Script = FontScriptThai
 			default:
 				f.Script = FontScriptAll.Filter(func(c rune) bool {
 					return ttf.Index(c) != 0
