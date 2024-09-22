@@ -2,6 +2,7 @@ package dict
 
 import (
 	"bytes"
+	"cmp"
 	_ "embed"
 	"encoding/binary"
 	"fmt"
@@ -60,23 +61,36 @@ func JS() []byte {
 // ParseFunc parses a dictionary.
 type ParseFunc func() ([]Entry, error)
 
-var dict = map[string]ParseFunc{}
+type registeredDict struct {
+	Name     string
+	Priority int
+	Parse    ParseFunc
+}
+
+var dict []registeredDict
 
 // Register adds a dictionary to be parsed when [Parse] is called.
-func Register(name string, parse ParseFunc) {
-	if _, exists := dict[name]; exists {
+func Register(name string, priority int, parse ParseFunc) {
+	if exists := slices.ContainsFunc(dict, func(d registeredDict) bool {
+		return d.Name == name
+	}); exists {
 		panic("dict: " + name + " already exists")
 	}
-	dict[name] = parse
+	dict = append(dict, registeredDict{name, priority, parse})
+	slices.SortFunc(dict, func(a, b registeredDict) int {
+		if p := cmp.Compare(b.Priority, a.Priority); p != 0 {
+			return p
+		}
+		return cmp.Compare(a.Name, b.Name)
+	})
 }
 
 // Dicts gets the registered dictionary names.
 func Dicts() []string {
-	ds := make([]string, len(dict))[:0]
-	for k := range dict {
-		ds = append(ds, k)
+	ds := make([]string, 0, len(dict))
+	for _, d := range dict {
+		ds = append(ds, d.Name)
 	}
-	slices.Sort(ds)
 	return ds
 }
 
@@ -84,22 +98,22 @@ var dictParsed = map[string][]Entry{}
 
 // Parse parses dictionaries.
 func Parse(verbose bool) error {
-	for _, d := range Dicts() {
-		if _, done := dictParsed[d]; !done {
-			p, err := dict[d]()
+	for _, d := range dict {
+		if _, done := dictParsed[d.Name]; !done {
+			p, err := d.Parse()
 			if err != nil {
-				return fmt.Errorf("%s: %w", d, err)
+				return fmt.Errorf("%s: %w", d.Name, err)
 			}
-			dictParsed[d] = p
+			dictParsed[d.Name] = p
 		}
 		if verbose {
 			seen := map[string]struct{}{}
-			for _, x := range dictParsed[d] {
+			for _, x := range dictParsed[d.Name] {
 				for _, t := range x.Terms {
 					seen[Normalize(t)] = struct{}{}
 				}
 			}
-			fmt.Printf("... %s (%d terms, %d entries)\n", d, len(seen), len(dictParsed[d]))
+			fmt.Printf("... %s (%d terms, %d entries)\n", d.Name, len(seen), len(dictParsed[d.Name]))
 		}
 	}
 	return nil

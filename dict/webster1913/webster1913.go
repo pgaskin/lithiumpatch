@@ -20,7 +20,7 @@ func exists(name string) bool {
 
 func init() {
 	if exists("webster1913.txt") {
-		dict.Register("webster1913", func() ([]dict.Entry, error) {
+		dict.Register("webster1913", -50, func() ([]dict.Entry, error) {
 			f, err := assets.Open("webster1913.txt")
 			if err != nil {
 				return nil, err

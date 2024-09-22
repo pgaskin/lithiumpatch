@@ -27,7 +27,7 @@ func exists(name string) bool {
 
 func init() {
 	if us, gb := exists("Dictionary_EN_US.db"), exists("Dictionary_EN_GB.db"); us || gb {
-		dict.Register("oxford_en", func() ([]dict.Entry, error) {
+		dict.Register("oxford_en", 50, func() ([]dict.Entry, error) {
 			var sources []io.ReaderAt
 			var names []string
 			if gb {
