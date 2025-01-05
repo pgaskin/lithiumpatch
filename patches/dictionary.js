@@ -403,6 +403,17 @@ var Dictionary = (function() {
             }
         }
 
+        /**
+         * Clears the current selection. Does not call rangeCleared.
+         */
+        clear() {
+            const sel = document.getSelection()
+            if (sel?.rangeCount) {
+                sel?.empty?.()
+                sel?.removeAllRanges?.()
+            }
+        }
+
         #handleSelectionChange(event) {
             // note: this gets called for zero-length selections (i.e., clicks)
             // too, which is why it works for hiding it
@@ -711,6 +722,9 @@ var Dictionary = (function() {
         let dictSettle // timer
         let dictSem // promise
         let dictClientRect // function -> rect
+        let dictPersist = false
+
+        const controller = new SelectionController()
 
         const lookup = (txt, deep) => {
 
@@ -729,7 +743,9 @@ var Dictionary = (function() {
                     return
                 event.preventDefault()
                 event.stopPropagation()
+                dictPersist = true
                 dictPopup.expand()
+                controller.clear()
                 pw.querySelector("button.close").style.display = "block"
             }, true)
 
@@ -746,10 +762,13 @@ var Dictionary = (function() {
                     term = term.trim()
                     if (term.length) {
                         lookup(term.trim(), true, true)
+                        dictPersist = true
                         dictPopup.expand()
+                        controller.clear()
                         pw.querySelector("button.close").style.display = "block"
                     }
                 }
+                // TODO: styled search overlay with autocomplete
             }, true)
 
             // handle the close button
@@ -768,7 +787,7 @@ var Dictionary = (function() {
                 // if we're not modifying an existing selection (or it's a deep selection), discard the old semaphore
                 dictSem = Promise.resolve()
             }
-            if (dictPopup.expanded) {
+            if (dictPopup.expanded || dictPersist) {
                 pw.querySelector("button.close").style.display = "block"
             }
 
@@ -825,7 +844,6 @@ var Dictionary = (function() {
             }, deep ? 0 : 50)
         }
 
-        const controller = new SelectionController()
         controller.rangeValidate = rng => {
             const txt = rng.toString()
             if (txt.length < 1) {
@@ -847,7 +865,9 @@ var Dictionary = (function() {
             }
 
             // hide the popup
-            dictPopup.hide()
+            if (!dictPersist || !dictPopup.visible) {
+                dictPopup.hide()
+            }
         }
         controller.rangeSelected = rng => {
             // clear the settle timer
@@ -860,7 +880,9 @@ var Dictionary = (function() {
             dictClientRect = () => rng.getBoundingClientRect()
 
             // do the lookup
-            lookup(rng.toString(), false)
+            if (!dictPersist || !dictPopup.visible) {
+                lookup(rng.toString(), false)
+            }
         }
         controller.rangeSelectedDeep = (rng, anchorNode) => {
             const re = /^\w*$/
