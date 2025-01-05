@@ -187,6 +187,8 @@ var Dictionary = (function() {
                 this.#popup.style.setProperty("box-shadow", dark ? "none" : "0 0 8px 0 rgba(0, 0, 0, .25)")
                 this.#popup.style.setProperty("background-color", bg !== undefined ? bg : dark ? "#333" : "#fff")
                 this.#popup.style.setProperty("color", fg !== undefined ? fg : dark ? "#eee" : "#000")
+                this.#popup.style.setProperty("--popup-background", bg !== undefined ? bg : dark ? "#333" : "#fff")
+                this.#popup.style.setProperty("--popup-border-color", dark ? "rgba(255, 255, 255, .25)" : "rgba(0, 0, 0, .25)")
             }
             applyTheme()
 
@@ -603,6 +605,52 @@ var Dictionary = (function() {
         nav.toolbar > button.close {
             display: none;
         }
+        aside.lookup {
+            display: none;
+        }
+        aside.lookup > input {
+            appearance: none;
+            border: 0;
+            padding: 0;
+            margin: 0;
+            font: inherit;
+            color: inherit;
+            background: none;
+            border-radius: 0;
+            outline: 0;
+            line-height: 1;
+        }
+        aside.lookup > input {
+            display: block;
+            width: 100%;
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 8px;
+            font-weight: inherit;
+            background: var(--popup-background);
+            border-bottom: 1px solid var(--popup-border-color);
+        }
+        aside.lookup > ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            text-indent: 0;
+        }
+        aside.lookup > ul > li {
+            padding: 0 8px;
+            line-height: 2.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        aside.lookup > ul > li:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        aside.lookup > ul > li:active {
+            background: rgba(0, 0, 0, 0.15);
+        }
         section {
             padding: 8px;
             border-top: 1px solid rgba(128,128,128,0.4);
@@ -722,11 +770,10 @@ var Dictionary = (function() {
         let dictSettle // timer
         let dictSem // promise
         let dictClientRect // function -> rect
-        let dictPersist = false
 
         const controller = new SelectionController()
 
-        const lookup = (txt, deep) => {
+        const lookup = (txt, deep, query) => {
 
             // set the initial popup
             const tt = Dictionary.normalize(txt)
@@ -735,6 +782,10 @@ var Dictionary = (function() {
                     <button class="lookup">${matIconSearch}</button>
                     <button class="close">${matIconClose}</button>
                 </nav>
+                <aside class="lookup">
+                    <input type="text" autocomplete="off" placeholder="Search dictionary..."/>
+                    <ul></ul>
+                </aside>
             `)
 
             // allow expanding the popup by clicking on a header
@@ -743,7 +794,6 @@ var Dictionary = (function() {
                     return
                 event.preventDefault()
                 event.stopPropagation()
-                dictPersist = true
                 dictPopup.expand()
                 controller.clear()
                 pw.querySelector("button.close").style.display = "block"
@@ -756,19 +806,74 @@ var Dictionary = (function() {
             }, false)
 
             // handle the lookup button
+            let updateAutocomplete
             pw.querySelector("button.lookup").addEventListener("click", event => {
-                let term = prompt("Lookup")
-                if (term) {
-                    term = term.trim()
-                    if (term.length) {
-                        lookup(term.trim(), true, true)
-                        dictPersist = true
-                        dictPopup.expand()
-                        controller.clear()
-                        pw.querySelector("button.close").style.display = "block"
+                pw.querySelector("aside.lookup").style.display = "block"
+                pw.querySelector("button.lookup").style.display = "none"
+                pw.querySelector("button.close").style.display = "block"
+                pw.querySelector("main").style.display = "none"
+                dictPopup.expand()
+                controller.clear()
+                if (query?.length) {
+                    pw.querySelector("aside.lookup > input").value = query
+                    updateAutocomplete?.()
+                } else {
+                    pw.querySelector("aside.lookup > input").focus()
+                }
+            }, true)
+
+            // handle the lookup autocomplete
+            const autocompleteDicts = []
+            pw.querySelector("aside.lookup > input").addEventListener("input", updateAutocomplete = event => {
+                const q = (event?.target || pw.querySelector("aside.lookup > input")).value.trim()
+                const ws = new Map()
+                if (q.length >= 2) {
+                    for (const x of autocompleteDicts) {
+                        for (const w of x.d.autocomplete(q, 15)) {
+                            let src = ws.get(w)
+                            if (src === undefined) {
+                                src = new Set()
+                                ws.set(w, src)
+                            }
+                            src.add(x.n)
+                        }
                     }
                 }
-                // TODO: styled search overlay with autocomplete
+                const sws = Array.from(ws.keys()).sort((a, b) => {
+                    return a.length - b.length || b.localeCompare(a)
+                })
+                const ul = pw.querySelector("aside.lookup > ul")
+                for (let i = 0; i < sws.length; i++) {
+                    const li = i < ul.children.length
+                        ? ul.children[i] // reuse where possible
+                        : ul.appendChild(document.createElement("li"))
+                    li.tabindex = -1
+                    li.textContent = sws[i] // TODO: show source dicts? ws.get(sws[i])
+                }
+                for (let i = ul.children.length-1; i >= sws.length; i--) {
+                    ul.children[i].remove()
+                }
+                if (ul.children.length) {
+                    ul.children[0].scrollIntoView?.({behavior: "instant", block: "nearest", inline: "nearest"})
+                }
+            }, true)
+
+            // handle the lookup autocomplete click
+            pw.querySelector("aside.lookup > ul").addEventListener("click", event => {
+                if (event.target?.tagName == "LI") {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    lookup(event.target.textContent.trim(), true, pw.querySelector("aside.lookup > input").value.trim())
+                }
+            }, true)
+
+            // handle the lookup autocomplete enter key
+            pw.querySelector("aside.lookup > input").addEventListener("keypress", updateAutocomplete = event => {
+                if (event.keyCode == 13) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    lookup(event.target.value.trim(), true, event.target.value.trim())
+                }
             }, true)
 
             // handle the close button
@@ -777,7 +882,7 @@ var Dictionary = (function() {
             }, true)
 
             // render the contents
-            const el = document.createElement("div")
+            const el = document.createElement("main")
             el.innerHTML = render(tt, "Loading.")
             pw.appendChild(el)
 
@@ -787,7 +892,7 @@ var Dictionary = (function() {
                 // if we're not modifying an existing selection (or it's a deep selection), discard the old semaphore
                 dictSem = Promise.resolve()
             }
-            if (dictPopup.expanded || dictPersist) {
+            if (dictPopup.expanded) {
                 pw.querySelector("button.close").style.display = "block"
             }
 
@@ -814,6 +919,7 @@ var Dictionary = (function() {
                                 } catch (ex) {
                                     throw new Error(`load ${n}: ${ex}`)
                                 }
+                                autocompleteDicts.push({n, d})
                                 try {
                                     var r = await d.query(tt, true)
                                 } catch (ex) {
@@ -865,7 +971,7 @@ var Dictionary = (function() {
             }
 
             // hide the popup
-            if (!dictPersist || !dictPopup.visible) {
+            if (!dictPopup.expanded) {
                 dictPopup.hide()
             }
         }
@@ -880,7 +986,7 @@ var Dictionary = (function() {
             dictClientRect = () => rng.getBoundingClientRect()
 
             // do the lookup
-            if (!dictPersist || !dictPopup.visible) {
+            if (!dictPopup.expanded) {
                 lookup(rng.toString(), false)
             }
         }
