@@ -235,7 +235,6 @@ var Dictionary = (function() {
         show(pos = false, getClientRect = undefined) {
             this.#pos = pos
             this.#posRect = getClientRect
-            this.#expand = false
             this.move()
 
             if (!this.visible) {
@@ -252,7 +251,7 @@ var Dictionary = (function() {
 
         /**
          * Expands the popup to fill the screen if it's visible. Reset upon the
-         * next call to show or hide.
+         * next call to hide.
          */
         expand() {
             this.#expand = true
@@ -557,6 +556,7 @@ var Dictionary = (function() {
             position: fixed;
             top: 0;
             right: 0;
+            z-index: 1000;
         }
         nav.toolbar > button {
             appearance: none;
@@ -659,12 +659,7 @@ var Dictionary = (function() {
         }
     `)
 
-    const render = (t, x) => html`
-        <nav class="toolbar">
-            <button class="lookup">${matIconSearch}</button>
-            <button class="close">${matIconClose}</button>
-        </nav>
-    ` + (!Array.isArray(x) ? html`
+    const render = (t, x) => !Array.isArray(x) ? html`
         <section>
             <header>
                 <div class="headword">${t}</div>${"\u00a0"}
@@ -710,7 +705,7 @@ var Dictionary = (function() {
                 <div class="source">${x.source}</div>
             `}
         </section>
-    `).join(""))
+    `).join("")
 
     import(init.dict).then(({default: dictionary, Dictionary: Dictionary}) => {
         let dictSettle // timer
@@ -719,15 +714,62 @@ var Dictionary = (function() {
 
         const lookup = (txt, deep) => {
 
-            // set the initial popup contents
+            // set the initial popup
             const tt = Dictionary.normalize(txt)
-            const el = dictPopup.replace(render(tt, "Loading."))
+            const pw = dictPopup.replace(html`
+                <nav class="toolbar">
+                    <button class="lookup">${matIconSearch}</button>
+                    <button class="close">${matIconClose}</button>
+                </nav>
+            `)
+
+            // allow expanding the popup by clicking on a header
+            pw.addEventListener("click", event => {
+                if (!event.target || (event.target.tagName != "HEADER" && Array.from(event.target.parentElement.querySelectorAll("header *")).indexOf(event.target) == -1))
+                    return
+                event.preventDefault()
+                event.stopPropagation()
+                dictPopup.expand()
+                pw.querySelector("button.close").style.display = "block"
+            }, true)
+
+            // don't let the toolbar trigger the expand/lookup
+            pw.querySelector("nav.toolbar").addEventListener("click", event => {
+                event.preventDefault()
+                event.stopPropagation()
+            }, false)
+
+            // handle the lookup button
+            pw.querySelector("button.lookup").addEventListener("click", event => {
+                let term = prompt("Lookup")
+                if (term) {
+                    term = term.trim()
+                    if (term.length) {
+                        lookup(term.trim(), true, true)
+                        dictPopup.expand()
+                        pw.querySelector("button.close").style.display = "block"
+                    }
+                }
+            }, true)
+
+            // handle the close button
+            pw.querySelector("button.close").addEventListener("click", event => {
+                dictPopup.hide()
+            }, true)
+
+            // render the contents
+            const el = document.createElement("div")
+            el.innerHTML = render(tt, "Loading.")
+            pw.appendChild(el)
 
             // show the popup
             if (dictPopup.show(false, dictClientRect) || deep) {
 
                 // if we're not modifying an existing selection (or it's a deep selection), discard the old semaphore
                 dictSem = Promise.resolve()
+            }
+            if (dictPopup.expanded) {
+                pw.querySelector("button.close").style.display = "block"
             }
 
             // wait for the selection to settle
@@ -779,38 +821,6 @@ var Dictionary = (function() {
                     // clicking between them doesn't select the first word
                     // of the nearest one
                     controller.changeDeepSelectionRoot(el, dictPopup.shadowRoot)
-
-                    // allow expanding the popup
-                    el.querySelector("header").addEventListener("click", event => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                        dictPopup.expand()
-                        el.querySelector("button.close").style.display = "block"
-                    }, false)
-
-                    // don't let the toolbar trigger the expand/lookup
-                    el.querySelector(".toolbar").addEventListener("click", event => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                    }, false)
-
-                    // handle the lookup button
-                    el.querySelector("button.lookup").addEventListener("click", event => {
-                        let term = prompt("Lookup")
-                        if (term) {
-                            term = term.trim()
-                            if (term.length) {
-                                lookup(term.trim(), true)
-                                dictPopup.expand()
-                                el.querySelector("button.close").style.display = "block"
-                            }
-                        }
-                    }, true)
-
-                    // handle the close button
-                    el.querySelector("button.close").addEventListener("click", event => {
-                        dictPopup.hide()
-                    }, true)
                 })
             }, deep ? 0 : 50)
         }
