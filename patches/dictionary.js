@@ -39,6 +39,23 @@ var Dictionary = (function() {
     }
 
     /**
+     * Raw HTML.
+     */
+    function rawHTML(s) {
+        return Object.defineProperties(new String(s), {
+            [isHtml]: {
+                value: true,
+            },
+        })
+    }
+
+    /**
+     * Material Icons Rounded
+     */
+    const matIconSearch = rawHTML(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#e8eaed"><path d="M0 0h24v24H0z" fill="none"/><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>`)
+    const matIconClose = rawHTML(`<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#e8eaed"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M18.3 5.71c-.39-.39-1.02-.39-1.41 0L12 10.59 7.11 5.7c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41L10.59 12 5.7 16.89c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L12 13.41l4.89 4.89c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L13.41 12l4.89-4.89c.38-.38.38-1.02 0-1.4z"/></svg>`)
+
+    /**
      * Escapes a string for use in HTML.
      */
     function escape(str) {
@@ -88,6 +105,7 @@ var Dictionary = (function() {
         #content
         #pos
         #posRect
+        #expand
         constructor(css = undefined) {
             this.#root = document.createElement("x-popup")
 
@@ -134,6 +152,14 @@ var Dictionary = (function() {
                 }
                 #inner::-webkit-scrollbar {
                     display: none;
+                }
+                #wrapper.expand {
+                    display: flex;
+                    flex-direction: column;
+                }
+                #wrapper.expand #popup {
+                    flex: 1;
+                    max-height: none;
                 }
             `)
 
@@ -209,6 +235,7 @@ var Dictionary = (function() {
         show(pos = false, getClientRect = undefined) {
             this.#pos = pos
             this.#posRect = getClientRect
+            this.#expand = false
             this.move()
 
             if (!this.visible) {
@@ -224,6 +251,15 @@ var Dictionary = (function() {
         }
 
         /**
+         * Expands the popup to fill the screen if it's visible. Reset upon the
+         * next call to show or hide.
+         */
+        expand() {
+            this.#expand = true
+            this.move()
+        }
+
+        /**
          * Hides the popup if it is visible.
          */
         hide() {
@@ -231,6 +267,7 @@ var Dictionary = (function() {
                 this.#root.remove()
                 this.#pos = false
                 this.#posRect = undefined
+                this.#expand = false
             }
         }
 
@@ -239,7 +276,10 @@ var Dictionary = (function() {
          */
         move() {
             let top, bot
-            if (this.#posRect === undefined) {
+            if (this.#expand) {
+                top = 0
+                bot = 0
+            } else if (this.#posRect === undefined) {
                 if (this.#pos) {
                     top = 0
                 } else {
@@ -261,6 +301,11 @@ var Dictionary = (function() {
                     }
                 }
             }
+            if (this.#expand) {
+                this.#wrapper.classList.add("expand")
+            } else {
+                this.#wrapper.classList.remove("expand")
+            }
             this.#wrapper.style.setProperty("top", top === undefined ? "auto" : `${top}px`, "important")
             this.#wrapper.style.setProperty("bottom", bot === undefined ? "auto" : `${bot}px`, "important")
         }
@@ -277,6 +322,13 @@ var Dictionary = (function() {
          */
         get shadowRoot() {
             return this.#shadow
+        }
+
+        /**
+         * Whether the popup is currently expanded.
+         */
+        get expanded() {
+            return !!this.#expand
         }
     }
 
@@ -496,7 +548,50 @@ var Dictionary = (function() {
         dicts: document.currentScript.dataset.dicts.split(" "),
     }
 
+    // TODO: expand dict popup and add search bar on tap
+
     const dictPopup = new Popup(`
+        nav.toolbar {
+            display: flex;
+            white-space: nowrap;
+            position: fixed;
+            top: 0;
+            right: 0;
+        }
+        nav.toolbar > button {
+            appearance: none;
+            border: 0;
+            padding: 0;
+            margin: 0;
+            font: inherit;
+            color: inherit;
+            background: none;
+            border-radius: 0;
+            outline: 0;
+            line-height: 1;
+        }
+        nav.toolbar > button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex: 0 0 auto;
+            padding: 8px;
+        }
+        nav.toolbar > button:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        nav.toolbar > button:active {
+            background: rgba(0, 0, 0, 0.15);
+        }
+        nav.toolbar > button > svg {
+            flex: 0 0 auto;
+            fill: currentColor;
+            height: 16px;
+            width: 16px;
+        }
+        nav.toolbar > button.close {
+            display: none;
+        }
         section {
             padding: 8px;
             border-top: 1px solid rgba(128,128,128,0.4);
@@ -564,7 +659,12 @@ var Dictionary = (function() {
         }
     `)
 
-    const render = (t, x) => !Array.isArray(x) ? html`
+    const render = (t, x) => html`
+        <nav class="toolbar">
+            <button class="lookup">${matIconSearch}</button>
+            <button class="close">${matIconClose}</button>
+        </nav>
+    ` + (!Array.isArray(x) ? html`
         <section>
             <header>
                 <div class="headword">${t}</div>${"\u00a0"}
@@ -610,7 +710,7 @@ var Dictionary = (function() {
                 <div class="source">${x.source}</div>
             `}
         </section>
-    `).join("")
+    `).join(""))
 
     import(init.dict).then(({default: dictionary, Dictionary: Dictionary}) => {
         let dictSettle // timer
@@ -679,6 +779,38 @@ var Dictionary = (function() {
                     // clicking between them doesn't select the first word
                     // of the nearest one
                     controller.changeDeepSelectionRoot(el, dictPopup.shadowRoot)
+
+                    // allow expanding the popup
+                    el.querySelector("header").addEventListener("click", event => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        dictPopup.expand()
+                        el.querySelector("button.close").style.display = "block"
+                    }, false)
+
+                    // don't let the toolbar trigger the expand/lookup
+                    el.querySelector(".toolbar").addEventListener("click", event => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }, false)
+
+                    // handle the lookup button
+                    el.querySelector("button.lookup").addEventListener("click", event => {
+                        let term = prompt("Lookup")
+                        if (term) {
+                            term = term.trim()
+                            if (term.length) {
+                                lookup(term.trim(), true)
+                                dictPopup.expand()
+                                el.querySelector("button.close").style.display = "block"
+                            }
+                        }
+                    }, true)
+
+                    // handle the close button
+                    el.querySelector("button.close").addEventListener("click", event => {
+                        dictPopup.hide()
+                    }, true)
                 })
             }, deep ? 0 : 50)
         }
