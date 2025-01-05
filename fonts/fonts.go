@@ -196,6 +196,7 @@ func (s Script) Filter(fn func(rune) bool) Script {
 		for _, c := range "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" {
 			if !fn(c) {
 				s ^= FontScriptLatin
+				break
 			}
 		}
 	}
@@ -203,6 +204,7 @@ func (s Script) Filter(fn func(rune) bool) Script {
 		for _, c := range "АБВГҐДЂЃЕЁЄЖЗЗ́ЅИІЇЙЈКЛЉМНЊОПРСС́ТЋЌУЎФХЦЧЏШЩЪЫЬЭЮЯ" {
 			if !fn(c) {
 				s ^= FontScriptCyrillic
+				break
 			}
 		}
 	}
@@ -210,6 +212,7 @@ func (s Script) Filter(fn func(rune) bool) Script {
 		for _, c := range "ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσΤτΥυΦφΧχΨψΩω" {
 			if !fn(c) {
 				s ^= FontScriptGreek
+				break
 			}
 		}
 	}
@@ -217,6 +220,7 @@ func (s Script) Filter(fn func(rune) bool) Script {
 		for _, c := range "กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮะาเแโใไฤๅฦๆ" {
 			if !fn(c) {
 				s ^= FontScriptThai
+				break
 			}
 		}
 	}
