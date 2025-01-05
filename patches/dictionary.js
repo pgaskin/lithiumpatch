@@ -548,6 +548,68 @@ var Dictionary = (function() {
         }
     }
 
+    const createAutocompleteSearch = (el, normalize, autocomplete, search) => {
+        const input = el.querySelector("input")
+        const ul = el.querySelector("ul")
+
+        let last
+        const update = query => {
+            if (normalize) {
+                query = normalize(query)
+            }
+            if (query === last) {
+                return
+            }
+            const ws = Array.from(new Set(autocomplete ? autocomplete(query) : [])).sort((a, b) => {
+                return a.length - b.length || b.localeCompare(a)
+            })
+            for (let i = 0; i < ws.length; i++) {
+                const li = i < ul.children.length
+                    ? ul.children[i] // reuse where possible
+                    : ul.appendChild(document.createElement("li"))
+                li.tabindex = -1
+                li.dataset.term = ws[i]
+                li.textContent = ws[i] // TODO: show source dicts? ws.get(sws[i])
+            }
+            for (let i = ul.children.length-1; i >= ws.length; i--) {
+                ul.children[i].remove()
+            }
+            if (ul.children.length) {
+                ul.children[0].scrollIntoView?.({behavior: "instant", block: "nearest", inline: "nearest"})
+            }
+        }
+
+        // handle the enter key
+        input.addEventListener("keypress", event => {
+            if (event.keyCode == 13) {
+                event.preventDefault()
+                event.stopPropagation()
+                if (search) {
+                    search(acInput.value)
+                }
+            }
+        }, true)
+
+        // handle an autocomplete entry
+        ul.addEventListener("click", event => {
+            event.preventDefault()
+            event.stopPropagation()
+            if (event.target?.dataset?.term && search) {
+                search(event.target.dataset.term)
+            }
+        }, true)
+
+        // handle input
+        // note: I would use the input event, but this is more reliable across devices
+        const interval = window.setInterval(() => {
+            if (!input.isConnected) {
+                window.clearInterval(interval)
+                return
+            }
+            update(input.value)
+        }, 250)
+    }
+
     const settings = {
         dict_disabled: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictDisabled().split(" ") : [],
         dict_show_examples: 'LithiumApp' in globalThis ? globalThis.LithiumApp.getDictShowExamples() : true,
@@ -559,8 +621,6 @@ var Dictionary = (function() {
         dict: new URL(document.currentScript.dataset.dict || "./dict.js", document.currentScript.src).href,
         dicts: document.currentScript.dataset.dicts.split(" "),
     }
-
-    // TODO: expand dict popup and add search bar on tap
 
     const dictPopup = new Popup(`
         nav.toolbar {
@@ -639,6 +699,7 @@ var Dictionary = (function() {
             text-indent: 0;
         }
         aside.lookup > ul > li {
+            display: block;
             padding: 0 8px;
             line-height: 2.25;
             white-space: nowrap;
@@ -790,7 +851,7 @@ var Dictionary = (function() {
 
             // allow expanding the popup by clicking on a header
             pw.addEventListener("click", event => {
-                if (!event.target || (event.target.tagName != "HEADER" && Array.from(event.target.parentElement.querySelectorAll("header *")).indexOf(event.target) == -1))
+                if (!event.target || (event.target.tagName.toLowerCase() != "HEADER" && Array.from(event.target.parentElement.querySelectorAll("header *")).indexOf(event.target) == -1))
                     return
                 event.preventDefault()
                 event.stopPropagation()
@@ -799,15 +860,10 @@ var Dictionary = (function() {
                 pw.querySelector("button.close").style.display = "block"
             }, true)
 
-            // don't let the toolbar trigger the expand/lookup
-            pw.querySelector("nav.toolbar").addEventListener("click", event => {
+            // handle the lookup button
+            pw.querySelector("button.lookup").addEventListener("click", event => {
                 event.preventDefault()
                 event.stopPropagation()
-            }, false)
-
-            // handle the lookup button
-            let updateAutocomplete
-            pw.querySelector("button.lookup").addEventListener("click", event => {
                 pw.querySelector("aside.lookup").style.display = "block"
                 pw.querySelector("button.lookup").style.display = "none"
                 pw.querySelector("button.close").style.display = "block"
@@ -816,70 +872,48 @@ var Dictionary = (function() {
                 controller.clear()
                 if (query?.length) {
                     pw.querySelector("aside.lookup > input").value = query
-                    updateAutocomplete?.()
                 } else {
                     pw.querySelector("aside.lookup > input").focus()
                 }
             }, true)
 
-            // handle the lookup autocomplete
-            const autocompleteDicts = []
-            pw.querySelector("aside.lookup > input").addEventListener("input", updateAutocomplete = event => {
-                const q = (event?.target || pw.querySelector("aside.lookup > input")).value.trim()
-                const ws = new Map()
-                if (q.length >= 2) {
-                    for (const x of autocompleteDicts) {
-                        for (const w of x.d.autocomplete(q, 15)) {
-                            let src = ws.get(w)
-                            if (src === undefined) {
-                                src = new Set()
-                                ws.set(w, src)
-                            }
-                            src.add(x.n)
-                        }
-                    }
-                }
-                const sws = Array.from(ws.keys()).sort((a, b) => {
-                    return a.length - b.length || b.localeCompare(a)
-                })
-                const ul = pw.querySelector("aside.lookup > ul")
-                for (let i = 0; i < sws.length; i++) {
-                    const li = i < ul.children.length
-                        ? ul.children[i] // reuse where possible
-                        : ul.appendChild(document.createElement("li"))
-                    li.tabindex = -1
-                    li.textContent = sws[i] // TODO: show source dicts? ws.get(sws[i])
-                }
-                for (let i = ul.children.length-1; i >= sws.length; i--) {
-                    ul.children[i].remove()
-                }
-                if (ul.children.length) {
-                    ul.children[0].scrollIntoView?.({behavior: "instant", block: "nearest", inline: "nearest"})
-                }
-            }, true)
-
-            // handle the lookup autocomplete click
-            pw.querySelector("aside.lookup > ul").addEventListener("click", event => {
-                if (event.target?.tagName == "LI") {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    lookup(event.target.textContent.trim(), true, pw.querySelector("aside.lookup > input").value.trim())
-                }
-            }, true)
-
-            // handle the lookup autocomplete enter key
-            pw.querySelector("aside.lookup > input").addEventListener("keypress", updateAutocomplete = event => {
-                if (event.keyCode == 13) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    lookup(event.target.value.trim(), true, event.target.value.trim())
-                }
-            }, true)
-
             // handle the close button
             pw.querySelector("button.close").addEventListener("click", event => {
+                event.preventDefault()
+                event.stopPropagation()
                 dictPopup.hide()
             }, true)
+
+            // don't let the autocomplete trigger the expand/lookup or gestures
+            pw.querySelector("aside.lookup").addEventListener("click", event => {
+                event.preventDefault()
+                event.stopPropagation()
+            }, false)
+
+            // initialize the autocomplete
+            const acDicts = []
+            createAutocompleteSearch(pw.querySelector("aside.lookup"),
+                query => Dictionary.normalize(query),
+                query => {
+                    const ws = new Map()
+                    if (query.length >= 2) {
+                        for (const x of acDicts) {
+                            for (const w of x.d.autocomplete(query, 15, true)) {
+                                let src = ws.get(w)
+                                if (src === undefined) {
+                                    src = new Set()
+                                    ws.set(w, src)
+                                }
+                                src.add(x.n)
+                            }
+                        }
+                    }
+                    return ws.keys() // TODO: include the dict source?
+                },
+                term => {
+                    lookup(term, true, pw.querySelector("aside.lookup > input").value.trim())
+                },
+            )
 
             // render the contents
             const el = document.createElement("main")
@@ -919,7 +953,7 @@ var Dictionary = (function() {
                                 } catch (ex) {
                                     throw new Error(`load ${n}: ${ex}`)
                                 }
-                                autocompleteDicts.push({n, d})
+                                acDicts.push({n, d})
                                 try {
                                     var r = await d.query(tt, true)
                                 } catch (ex) {

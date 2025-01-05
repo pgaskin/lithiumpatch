@@ -85,8 +85,14 @@ export class Dictionary {
         return shard.get(entry % this.#index.shardSize)
     }
 
-    autocomplete(word, limit = -1) {
-        return this.#index.lookupPrefix(word, limit)
+    autocomplete(term, limit = -1, normalized = false) {
+        if (!normalized) {
+            term = Dictionary.normalize(term)
+        }
+        if (!term.length){
+            return []
+        }
+        return this.#index.lookupPrefix(term, limit)
     }
 
     static normalize(term) {
