@@ -148,6 +148,11 @@ func (p *patchInst) Do(apk string, diffwriter io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("patch %q: read %q: %w", source, srcp, err)
 		}
+
+		// normalize line endings (apktool will emit crlf on windows)
+		// note: we don't need to do this in the replacements since go/scanner normalizes raw literals
+		buf = bytes.ReplaceAll(buf, []byte{'\r', '\n'}, []byte{'\n'})
+
 		obuf := string(buf)
 		sbuf := string(buf)
 
