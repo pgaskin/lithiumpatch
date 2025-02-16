@@ -86,9 +86,19 @@ func init() {
 					FixIndent(`
 						iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity;->mBookView:Lcom/faultexception/reader/content/BookView;
 						iget-object v2, p0, Lcom/faultexception/reader/ReaderActivity;->mPrefs:Landroid/content/SharedPreferences;
-						const-string v3, "None"
-						const-string v4, "content_invert"
-						invoke-interface {v2, v4, v3}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+						iget-object v3, p0, Lcom/faultexception/reader/ReaderActivity;->mBookView:Lcom/faultexception/reader/content/BookView;
+						invoke-virtual {v3}, Lcom/faultexception/reader/content/BookView;->isFixedLayout()Z
+						move-result v3
+						if-nez v3, :content_invert_fxl
+						const-string v3, "content_invert"
+						goto :content_invert_not_fxl
+						:content_invert_fxl
+						const-string v3, "content_invert_fxl"
+						:content_invert_not_fxl
+
+						const-string v4, "None"
+						invoke-interface {v2, v3, v4}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 						move-result-object v2
 						invoke-virtual {v0, v2}, Lcom/faultexception/reader/content/BookView;->setContentInvert(Ljava/lang/String;)V
 					`),
@@ -122,10 +132,16 @@ func init() {
 				.method private updateContentInvert()V
 					.locals 3
 
-					const-string v2, "None"
-
-					iget-object v0, p0, Lcom/faultexception/reader/DisplaySettingsFragment;->mPrefs:Landroid/content/SharedPreferences;
+					iget-boolean v1, p0, Lcom/faultexception/reader/DisplaySettingsFragment;->mFixedLayout:Z
+					if-nez v1, :content_invert_fxl
 					const-string v1, "content_invert"
+					goto :content_invert_not_fxl
+					:content_invert_fxl
+					const-string v1, "content_invert_fxl"
+					:content_invert_not_fxl
+
+					const-string v2, "None"
+					iget-object v0, p0, Lcom/faultexception/reader/DisplaySettingsFragment;->mPrefs:Landroid/content/SharedPreferences;
 					invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 					move-result-object v2
 
@@ -260,7 +276,14 @@ func init() {
 					return-void
 
 					:get_current
+					iget-boolean v2, p0, Lcom/faultexception/reader/DisplaySettingsFragment;->mFixedLayout:Z
+					if-nez v2, :content_invert_fxl
 					const-string v2, "content_invert"
+					goto :content_invert_not_fxl
+					:content_invert_fxl
+					const-string v2, "content_invert_fxl"
+					:content_invert_not_fxl
+
 					iget-object v6, p0, Lcom/faultexception/reader/DisplaySettingsFragment;->mPrefs:Landroid/content/SharedPreferences;
 
 					const-string v3, "None"
