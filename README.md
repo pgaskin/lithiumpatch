@@ -26,6 +26,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 - Material You colors on Android 12+.
 - Full-bleed background in fullscreen mode on devices with a notch.
 - Option to disable page turn animations (e.g., for e-ink screens).
+- Option to invert the color of images or the entire page.
 
 ## Usage
 
