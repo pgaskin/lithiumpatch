@@ -54,7 +54,7 @@ func init() {
 		PatchFile("smali/com/faultexception/reader/BooksFragment.smali",
 			ReplaceString(
 				`"title LIKE ? OR creator LIKE ?"`,
-				`"title LIKE ? OR (creator || series) LIKE ?"`, // a hack to not have to reorder the whole parameter array
+				`"title LIKE ? OR (coalesce(creator, '') || coalesce(series, '')) LIKE ?"`, // a hack to not have to reorder the whole parameter array
 			),
 			ReplaceString(
 				`"creator ASC"`,
