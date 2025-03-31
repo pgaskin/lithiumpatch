@@ -17,6 +17,8 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      - name: Install zipalign
+        run: sudo apt update && sudo apt install -y zipalign
       - name: Write keystore
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/default.jks
