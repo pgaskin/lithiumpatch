@@ -199,21 +199,17 @@ func run(ctx context.Context) error {
 	}
 	fmt.Println()
 
-	if _, err := exec.LookPath(*Zipalign); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not find zipalign, not zipaligning (memory usage will be higher during runtime)\n")
-	} else {
-		fmt.Printf("> Zipaligning APK\n")
-		apkPatchedBeforeAlign := filepath.Join(apkTmpDir, "unaligned.apk")
-		if err := os.Rename(apkPatched, apkPatchedBeforeAlign); err != nil {
-			return fmt.Errorf("rename apk: %w", err)
-		}
-		cmd := exec.CommandContext(ctx, *Zipalign, "4", filepath.Join(apkTmpDir, "unaligned.apk"), apkPatched)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("zipalign: %w", err)
-		}
+	fmt.Printf("> Zipaligning APK\n")
+	apkPatchedBeforeAlign := filepath.Join(apkTmpDir, "unaligned.apk")
+	if err := os.Rename(apkPatched, apkPatchedBeforeAlign); err != nil {
+		return fmt.Errorf("rename apk: %w", err)
+	}
+	cmd = exec.CommandContext(ctx, *Zipalign, "4", filepath.Join(apkTmpDir, "unaligned.apk"), apkPatched)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("zipalign: %w", err)
 	}
 	fmt.Println()
 
