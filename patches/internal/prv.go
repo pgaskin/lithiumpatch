@@ -1,8 +1,9 @@
-//go:build prv
-
 package internal
 
 import . "github.com/pgaskin/lithiumpatch/patches/patchdef"
+
+// Lithium isn't available on the Play Store anymore as of April 2025, so always
+// unlock pro features.
 
 func init() {
 	Register("prv",
