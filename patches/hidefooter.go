@@ -1,7 +1,3 @@
-// # Hide reader footer bar
-//
-// Adds a preference to hide the bottom chapter/footer bar in the reader.
-// When enabled, tapping to show chrome will not show the footer bar.
 package patches
 
 import (
@@ -14,42 +10,56 @@ func init() {
 		PatchFile("res/xml/preferences.xml",
 			ReplaceStringAppend(
 				"\n"+`    <PreferenceCategory android:title="@string/pref_category_advanced">`,
-				"\n"+`        <SwitchPreferenceCompat android:title="Hide footer bar (reader)" android:key="hide_reader_footer" android:defaultValue="false" />`,
+				"\n"+`        <SwitchPreferenceCompat android:title="Hide footer slider (reader)" android:key="hide_reader_footer" android:defaultValue="false" />`,
 			),
 		),
 
-		// In ReaderActivity#setChromeVisible(boolean), override only the nav bar behavior
-		// so the toolbar still follows chrome visibility, but the footer bar stays hidden
-		// if the preference is enabled.
+		// Hide only the page slider when enabled. Do this once on activity start.
 		PatchFile("smali/com/faultexception/reader/ReaderActivity.smali",
-			InMethod("setChromeVisible(Z)V",
-				// increase locals to have spare temp registers v6,v7,v8
-				ReplaceString(".locals 6", ".locals 10"),
-				// Force nav bar translationY path to hidden on show when enabled
-				ReplaceStringPrepend(
-					"    if-eqz p1, :cond_3\n",
-					"    # lithiumpatch: hide footer bar on show when enabled (translationY)\n"+
-						"    const/4 v8, 0x0\n"+
-						"    iget-object v7, p0, Lcom/faultexception/reader/ReaderActivity;->mPrefs:Landroid/content/SharedPreferences;\n"+
-						"    const-string v6, \"hide_reader_footer\"\n"+
-						"    invoke-interface {v7, v6, v8}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z\n"+
-						"    move-result v8\n"+
-						"    if-eqz v8, :lith_patch_hf_tyalive\n"+
-						"    goto :cond_3\n"+
-						"    :lith_patch_hf_tyalive\n",
+			// Add helper method before onCreate
+			ReplaceStringPrepend(
+				"\n"+`.method protected onCreate(Landroid/os/Bundle;)V`,
+				FixIndent("\n"+`
+                .method private applyHideFooterSlider()V
+                    .locals 3
+                    const/4 v2, 0x0
+                    iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity;->mPrefs:Landroid/content/SharedPreferences;
+                    const-string v1, "hide_reader_footer"
+                    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                    move-result v2
+                    if-eqz v2, :lith_patch_hfs_show
+                    iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity;->mPageSeekView:Landroid/widget/SeekBar;
+                    const/16 v1, 0x8
+                    invoke-virtual {v0, v1}, Landroid/view/View;->setVisibility(I)V
+                    return-void
+                    :lith_patch_hfs_show
+                    iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity;->mPageSeekView:Landroid/widget/SeekBar;
+                    const/4 v1, 0x0
+                    invoke-virtual {v0, v1}, Landroid/view/View;->setVisibility(I)V
+                    return-void
+                .end method
+                `),
+			),
+			// Call helper after SeekBar listener is set (robust minimal anchor)
+			InMethod("onCreate(Landroid/os/Bundle;)V",
+				ReplaceStringAppend(
+					FixIndent("\n"+`
+						.line 373
+						invoke-virtual {v2, v0}, Landroid/widget/SeekBar;->setOnSeekBarChangeListener(Landroid/widget/SeekBar$OnSeekBarChangeListener;)V
+					`),
+					FixIndent("\n"+`
+						invoke-direct {v0}, Lcom/faultexception/reader/ReaderActivity;->applyHideFooterSlider()V
+					`),
 				),
-				// Force nav bar listener choice to invisibleAfter on show when enabled
-				ReplaceStringPrepend(
-					"    if-eqz p1, :cond_4\n",
-					"    # lithiumpatch: hide footer bar on show when enabled (listener)\n"+
-						"    const/4 v8, 0x0\n"+
-						"    iget-object v7, p0, Lcom/faultexception/reader/ReaderActivity;->mPrefs:Landroid/content/SharedPreferences;\n"+
-						"    const-string v6, \"hide_reader_footer\"\n"+
-						"    invoke-interface {v7, v6, v8}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z\n"+
-						"    move-result v8\n"+
-						"    if-eqz v8, :lith_patch_hf_lalive\n"+
-						"    goto :cond_4\n"+
-						"    :lith_patch_hf_lalive\n",
+			),
+
+			// Also apply on resume so changes from Settings take effect immediately
+			InMethod("onResume()V",
+				ReplaceStringAppend(
+					"\n"+`    invoke-super {p0}, Lcom/faultexception/reader/BaseActivity;->onResume()V`,
+					FixIndent("\n"+`
+                        invoke-direct {p0}, Lcom/faultexception/reader/ReaderActivity;->applyHideFooterSlider()V
+                    `),
 				),
 			),
 		),
