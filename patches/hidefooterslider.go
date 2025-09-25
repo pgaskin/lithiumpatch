@@ -1,12 +1,13 @@
+// # Hide footer slider
+//
+// Optionally hide the reading view footer slider to prevent accidental touches.
 package patches
 
-import (
-	. "github.com/pgaskin/lithiumpatch/patches/patchdef"
-)
+import . "github.com/pgaskin/lithiumpatch/patches/patchdef"
 
 func init() {
-	Register("hidefooter",
-		// Add toggle in Settings → Advanced
+	Register("hidefooterslider",
+		// add toggle in settings
 		PatchFile("res/xml/preferences.xml",
 			ReplaceStringAppend(
 				"\n"+`    <PreferenceCategory android:title="@string/pref_category_advanced">`,
@@ -14,11 +15,13 @@ func init() {
 			),
 		),
 
-		// Hide only the page slider when enabled. Do this once on activity start.
+		// hide only the page slider when enabled
 		PatchFile("smali/com/faultexception/reader/ReaderActivity.smali",
-			// Add helper method before onCreate
+			// add helper method before onCreate
 			ReplaceStringPrepend(
-				"\n"+`.method protected onCreate(Landroid/os/Bundle;)V`,
+				FixIndent("\n"+`
+				.method protected onCreate(Landroid/os/Bundle;)V
+				`),
 				FixIndent("\n"+`
                 .method private applyHideFooterSlider()V
                     .locals 3
@@ -40,11 +43,10 @@ func init() {
                 .end method
                 `),
 			),
-			// Call helper after SeekBar listener is set (robust minimal anchor)
+			// call helper after SeekBar listener is set (robust minimal anchor)
 			InMethod("onCreate(Landroid/os/Bundle;)V",
 				ReplaceStringAppend(
 					FixIndent("\n"+`
-						.line 373
 						invoke-virtual {v2, v0}, Landroid/widget/SeekBar;->setOnSeekBarChangeListener(Landroid/widget/SeekBar$OnSeekBarChangeListener;)V
 					`),
 					FixIndent("\n"+`
@@ -52,11 +54,12 @@ func init() {
 					`),
 				),
 			),
-
-			// Also apply on resume so changes from Settings take effect immediately
+			// also apply on resume so changes from settings take effect immediately
 			InMethod("onResume()V",
 				ReplaceStringAppend(
-					"\n"+`    invoke-super {p0}, Lcom/faultexception/reader/BaseActivity;->onResume()V`,
+					FixIndent("\n"+`
+						invoke-super {p0}, Lcom/faultexception/reader/BaseActivity;->onResume()V
+					`),
 					FixIndent("\n"+`
                         invoke-direct {p0}, Lcom/faultexception/reader/ReaderActivity;->applyHideFooterSlider()V
                     `),
