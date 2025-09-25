@@ -31,7 +31,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 ## Usage
 
 1. Install JRE 1.8 or newer.
-2. Install Go 1.21 or newer.
+2. Install Go 1.25 or newer.
 3. Install zipalign (part of the Android build tools).
 4. Optionally run `go generate ./dict/edgedict` to download additional dictionaries.
 5. Optionally download additional fonts into the `fonts` directory to add additional fonts (to limit them to a single language, put them in a subdirectory named `latin`/`cyrillic`/`greek`/`thai`).
