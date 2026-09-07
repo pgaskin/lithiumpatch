@@ -30,20 +30,20 @@ func init() {
 		PatchFile("res/layout/books_grid_item.xml",
 			ReplaceStringRe(
 				regexp.MustCompile(`(?s)<ImageView android:id="@id/cover".*?/>`),
-				"$0"+"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:gravity="center" android:id="@id/reading_progress" android:background="#cc000000" android:paddingLeft="4.0dip" android:paddingTop="2.0dip" android:paddingRight="4.0dip" android:paddingBottom="2.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|right" android:layout_margin="4.0dip" android:fontFamily="sans-serif-medium" />`,
+				"$0"+"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:gravity="center" android:id="@id/reading_progress" android:background="#cc000000" android:paddingLeft="4.0dp" android:paddingTop="2.0dp" android:paddingRight="4.0dp" android:paddingBottom="2.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|right" android:layout_margin="4.0dp" android:fontFamily="sans-serif-medium" />`,
 			),
 		),
 		// LIST VIEW - Add progress badge on cover
 		PatchFile("res/layout/books_list_item.xml",
 			ReplaceStringRe(
 				regexp.MustCompile(`(?s)<ImageView android:layout_gravity="center" android:id="@id/noCover".*?/>`),
-				"$0"+"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:gravity="center" android:id="@id/reading_progress" android:background="#cc000000" android:paddingLeft="4.0dip" android:paddingTop="2.0dip" android:paddingRight="4.0dip" android:paddingBottom="2.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|right" android:layout_margin="2.0dip" android:fontFamily="sans-serif-medium" />`,
+				"$0"+"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:gravity="center" android:id="@id/reading_progress" android:background="#cc000000" android:paddingLeft="4.0dp" android:paddingTop="2.0dp" android:paddingRight="4.0dp" android:paddingBottom="2.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|right" android:layout_margin="2.0dp" android:fontFamily="sans-serif-medium" />`,
 			),
 		),
 		PatchFile("res/layout-v17/books_list_item.xml",
 			ReplaceStringRe(
 				regexp.MustCompile(`(?s)<ImageView android:layout_gravity="center" android:id="@id/noCover".*?/>`),
-				"$0"+"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:gravity="center" android:id="@id/reading_progress" android:background="#cc000000" android:paddingLeft="4.0dip" android:paddingTop="2.0dip" android:paddingRight="4.0dip" android:paddingBottom="2.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|right" android:layout_margin="2.0dip" android:fontFamily="sans-serif-medium" />`,
+				"$0"+"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:gravity="center" android:id="@id/reading_progress" android:background="#cc000000" android:paddingLeft="4.0dp" android:paddingTop="2.0dp" android:paddingRight="4.0dp" android:paddingBottom="2.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|right" android:layout_margin="2.0dp" android:fontFamily="sans-serif-medium" />`,
 			),
 		),
 		// Add progress field to ViewHolder
@@ -314,12 +314,13 @@ func init() {
 			),
 			// Add progress column index in swapCursor - must follow pattern of previous
 			InMethod(`swapCursor(Landroid/database/Cursor;)V`,
+				MustContain(FixIndent("\n"+`
+					iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;
+
+					const-string v1, "creator"
+				`)),
 				ReplaceStringAppend(
 					FixIndent("\n"+`
-						iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;
-
-						const-string v1, "creator"
-
 						invoke-interface {p1, v1}, Landroid/database/Cursor;->getColumnIndexOrThrow(Ljava/lang/String;)I
 
 						move-result v1
@@ -332,30 +333,6 @@ func init() {
 						invoke-interface {p1, v1}, Landroid/database/Cursor;->getColumnIndexOrThrow(Ljava/lang/String;)I
 						move-result v1
 						iput v1, v0, Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;->progress:I
-					`),
-				),
-			),
-			// Add progress column index in swapCursor (second occurrence) - must follow pattern of previous
-			InMethod(`swapCursor(Landroid/database/Cursor;)V`,
-				ReplaceStringAppend(
-					FixIndent("\n"+`
-						iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;
-
-						const-string v1, "creator"
-
-						invoke-interface {p1, v1}, Landroid/database/Cursor;->getColumnIndexOrThrow(Ljava/lang/String;)I
-
-						move-result v1
-
-						iput v1, v0, Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;->creator:I
-					`),
-					FixIndent("\n"+`
-						iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;
-						const-string v1, "current_position"
-						invoke-interface {p1, v1}, Landroid/database/Cursor;->getColumnIndexOrThrow(Ljava/lang/String;)I
-						move-result v1
-						iput v1, v0, Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;->progress:I
-
 					`),
 				),
 			),
