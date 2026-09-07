@@ -29,7 +29,7 @@ func init() {
 		// GRID VIEW - Add progress badge on cover
 		PatchFile("res/layout/books_grid_item.xml",
 			ReplaceStringRe(
-				regexp.MustCompile(`(?s)<ImageView android:id="@id/cover".*?/>`),
+				regexp.MustCompile(`(?s)<ImageView android:id="@id/noCover".*?/>`),
 				"$0"+"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:gravity="center" android:id="@id/reading_progress" android:background="#cc000000" android:paddingLeft="4.0dp" android:paddingTop="2.0dp" android:paddingRight="4.0dp" android:paddingBottom="2.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|right" android:layout_margin="4.0dp" android:fontFamily="sans-serif-medium" />`,
 			),
 		),
