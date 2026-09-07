@@ -190,6 +190,11 @@ export class Dictionary {
 }
 
 export class DictionaryResult extends Array {
+    // so map/filter/slice/etc doesn't use our constructor (with the length as the first param)
+    static get [Symbol.species]() {
+        return Array
+    }
+
     constructor(term, ...entries) {
         super(...entries)
         this.term = term // term which matched
@@ -307,7 +312,7 @@ export class DictionaryIndex {
     lookup(term) {
         const arr = this.#enc.encode(term)
         const len = arr.length
-        if (len >= this.#bucketCounts.length) {
+        if (len < 1 || len > this.#bucketCounts.length) {
             return []
         }
 
@@ -343,7 +348,7 @@ export class DictionaryIndex {
     lookupPrefix(term, limit = -1) {
         const arr = this.#enc.encode(term)
         const len = arr.length
-        if (len >= this.#bucketCounts.length) {
+        if (len < 1 || len > this.#bucketCounts.length) {
             return []
         }
 
@@ -391,22 +396,23 @@ export class DictionaryIndex {
 }
 
 export class DictionaryShard {
-    /** @type {DataView} */ #data
+    /** @type {ArrayBuffer} */ #buf
+    /** @type {DataView}    */ #data
 
     constructor(buf) {
+        this.#buf = buf
         this.#data = new DataView(buf)
     }
 
     get(index) {
         const offset = this.#data.getUint32(index * 4)
-        const buf = this.#data.buffer.slice(offset)
-        return new DictionaryEntry(buf)
+        return new DictionaryEntry(this.#buf, offset)
     }
 }
 
 export class DictionaryEntry {
-    constructor(buf) {
-        const b = wrapBuffer(buf)
+    constructor(buf, byteOffset = 0) {
+        const b = wrapBuffer(buf, byteOffset)
         this.name = b.str()
         this.pronunciation = b.str()
         this.meaningGroups = b.arr(i => ({
@@ -470,8 +476,8 @@ export class DictionaryEntry {
     }
 }
 
-function wrapBuffer(b) {
-    let c = 0
+function wrapBuffer(b, byteOffset = 0) {
+    let c = byteOffset
     const dv = new DataView(b)
     const td = new TextDecoder("utf-8")
     const u32 = () => {
@@ -485,7 +491,10 @@ function wrapBuffer(b) {
         return x
     }
     const str = () => {
-        return td.decode(buf(u32()))
+        const n = u32()
+        const x = td.decode(new Uint8Array(dv.buffer, c, n))
+        c += n
+        return x
     }
     const arr = (fn, n = undefined) => {
         const x = new Array(n ?? u32())
@@ -509,14 +518,19 @@ function makeSingleFlightCache(get, max = 0) {
                 p = get(key)
                 pending.set(key, p)
             }
-            obj = await p
+            try {
+                obj = await p
+            } finally {
+                if (pending.get(key) === p) {
+                    pending.delete(key)
+                }
+            }
         }
         if (max > 0 && cache.size > max) {
             cache.delete(cache.keys().next().value)
         }
         cache.delete(key)
         cache.set(key, obj)
-        pending.delete(key)
         return obj
     }
 }

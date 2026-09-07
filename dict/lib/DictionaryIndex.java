@@ -31,7 +31,7 @@ public class DictionaryIndex {
     public int[] lookup(String term) {
         final ByteBuffer arr = ByteBuffer.wrap(term.getBytes(StandardCharsets.UTF_8));
         final int len = arr.limit();
-        if (len >= this.bucketCounts.length) {
+        if (len < 1 || len > this.bucketCounts.length) {
             return new int[0];
         }
 

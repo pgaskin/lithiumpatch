@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"unicode"
 
@@ -186,8 +185,11 @@ func (b *builder) run() error {
 	// sort the term index buckets (for binary searches)
 	// note: there may be multiple entries for a term, so we don't dedupe
 	for _, x := range b.indexBuckets {
-		sort.Slice(x, func(i, j int) bool {
-			return bytes.Compare([]byte(x[i].Term), []byte(x[j].Term)) < 0
+		slices.SortFunc(x, func(a, b builderIndexEntry) int {
+			if c := strings.Compare(a.Term, b.Term); c != 0 {
+				return c
+			}
+			return cmp.Compare(a.Entry, b.Entry) // for reproducibility
 		})
 	}
 
