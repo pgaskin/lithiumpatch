@@ -63,7 +63,7 @@ func init() {
 			),
 			ReplaceString(
 				`"creator ASC"`,
-				`"creator ASC, series ASC, LENGTH(series_index) ASC, series_index ASC"`,
+				`"creator ASC, series ASC, CAST(series_index AS REAL) ASC, series_index ASC"`,
 			),
 		),
 		PatchFile("smali/com/faultexception/reader/BooksAdapter$ViewHolder.smali",
@@ -118,17 +118,28 @@ func init() {
 					if-eqz v2, :retstr
 					invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-					# v3=series_index, v4=separator, v5=find, v6=replace
+					# v3=series_index, v4=separator, v5/v6=tmp
 					iget-object v3, p0, Lcom/faultexception/reader/BooksAdapter;->mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;
 					iget v3, v3, Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;->seriesIndex:I
 					invoke-interface {v0, v3}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
 					move-result-object v3
 
-					if-eqz v3, :retstr
+					invoke-static {v3}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+					move-result v5
+					if-nez v5, :retstr
+
 					const-string v5, ".0"
-					const-string v6, ""
-					invoke-virtual {v3, v5, v6}, Ljava/lang/String;->replace(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;
+					invoke-virtual {v3, v5}, Ljava/lang/String;->endsWith(Ljava/lang/String;)Z
+					move-result v5
+					if-eqz v5, :notrim
+					invoke-virtual {v3}, Ljava/lang/String;->length()I
+					move-result v6
+					add-int/lit8 v6, v6, -0x2
+					const/4 v5, 0x0
+					invoke-virtual {v3, v5, v6}, Ljava/lang/String;->substring(II)Ljava/lang/String;
 					move-result-object v3
+
+					:notrim
 
 					const-string v4, " #"
 					invoke-virtual {v1, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
@@ -483,7 +494,10 @@ func init() {
 											if (pName != null) {
 												vSrc = null;
 												vKey = pName;
-												vValue = pContent;
+												vValue = pContent != null ? pContent.trim() : null;
+												if (vValue != null && vValue.isEmpty()) {
+													vValue = null;
+												}
 											} else {
 												if (pRefines != null && pRefines.startsWith("#")) {
 													vSrc = pRefines.substring(1);
@@ -516,13 +530,11 @@ func init() {
 							for (final String src : hSeries.keySet()) {
 								final String series = hSeries.get(src);
 								if (series != null) {
-									final String seriesIndex = hSeriesIndex.get(src);
-									if (seriesIndex != null) {
-										if (!hSeriesSkip.contains(src)) {
-											mSeries = series; // Lcom/faultexception/reader/book/EPubBook;->mSeries:Ljava/lang/String;
-											mSeriesIndex = seriesIndex; // Lcom/faultexception/reader/book/EPubBook;->mSeriesIndex:Ljava/lang/String;
-											return src != null ? "#" + src : "calibre";
-										}
+									final String seriesIndex = hSeriesIndex.get(src); // may be null
+									if (!hSeriesSkip.contains(src)) {
+										mSeries = series; // Lcom/faultexception/reader/book/EPubBook;->mSeries:Ljava/lang/String;
+										mSeriesIndex = seriesIndex; // Lcom/faultexception/reader/book/EPubBook;->mSeriesIndex:Ljava/lang/String;
+										return src != null ? "#" + src : "calibre";
 									}
 								}
 							}
@@ -622,14 +634,14 @@ func init() {
 
 					move/from16 v0, v24
 
-					if-eq v6, v0, :cond_199
+					if-eq v6, v0, :cond_1aa
 
 					.line 39
-					packed-switch v6, :pswitch_data_1f6
+					packed-switch v6, :pswitch_data_206
 
 					move v3, v4
 
-					.line 122
+					.line 125
 					.end local v4    # "depth":I
 					.restart local v3    # "depth":I
 					:cond_4a
@@ -681,7 +693,7 @@ func init() {
 					if-eqz v24, :cond_6a
 
 					.line 48
-					packed-switch v3, :pswitch_data_1fe
+					packed-switch v3, :pswitch_data_20e
 
 					.line 65
 					:cond_6a
@@ -771,7 +783,7 @@ func init() {
 
 					.line 75
 					:cond_b1
-					packed-switch v6, :pswitch_data_208
+					packed-switch v6, :pswitch_data_218
 
 					.line 74
 					:cond_b4
@@ -885,7 +897,7 @@ func init() {
 					.line 92
 					.end local v18    # "tmp":Ljava/lang/String;
 					:cond_fa
-					if-eqz v12, :cond_128
+					if-eqz v12, :cond_139
 
 					.line 93
 					const/16 v21, 0x0
@@ -896,17 +908,34 @@ func init() {
 
 					.line 95
 					.local v20, "vKey":Ljava/lang/String;
-					move-object/from16 v22, v10
+					if-eqz v10, :cond_136
 
-					.line 111
+					invoke-virtual {v10}, Ljava/lang/String;->trim()Ljava/lang/String;
+
+					move-result-object v22
+
+					.line 96
 					.local v22, "vValue":Ljava/lang/String;
-					:cond_102
-					:goto_102
-					if-eqz v20, :cond_1f3
+					:goto_106
+					if-eqz v22, :cond_110
 
-					if-eqz v22, :cond_1f3
+					invoke-virtual/range {v22 .. v22}, Ljava/lang/String;->isEmpty()Z
 
-					.line 112
+					move-result v24
+
+					if-eqz v24, :cond_110
+
+					.line 97
+					const/16 v22, 0x0
+
+					.line 114
+					:cond_110
+					:goto_110
+					if-eqz v20, :cond_202
+
+					if-eqz v22, :cond_202
+
+					.line 115
 					const-string v24, "calibre:series"
 
 					move-object/from16 v0, v24
@@ -917,7 +946,7 @@ func init() {
 
 					move-result v24
 
-					if-nez v24, :cond_11e
+					if-nez v24, :cond_12c
 
 					const-string v24, "belongs-to-collection"
 
@@ -929,10 +958,10 @@ func init() {
 
 					move-result v24
 
-					if-eqz v24, :cond_157
+					if-eqz v24, :cond_168
 
-					.line 113
-					:cond_11e
+					.line 116
+					:cond_12c
 					move-object/from16 v0, v21
 
 					move-object/from16 v1, v22
@@ -945,14 +974,20 @@ func init() {
 					.restart local v4    # "depth":I
 					goto/16 :goto_40
 
-					.line 97
+					.line 95
 					.end local v4    # "depth":I
-					.end local v20    # "vKey":Ljava/lang/String;
-					.end local v21    # "vSrc":Ljava/lang/String;
 					.end local v22    # "vValue":Ljava/lang/String;
 					.restart local v3    # "depth":I
-					:cond_128
-					if-eqz v14, :cond_14f
+					:cond_136
+					const/16 v22, 0x0
+
+					goto :goto_106
+
+					.line 100
+					.end local v20    # "vKey":Ljava/lang/String;
+					.end local v21    # "vSrc":Ljava/lang/String;
+					:cond_139
+					if-eqz v14, :cond_160
 
 					const-string v24, "#"
 
@@ -962,9 +997,9 @@ func init() {
 
 					move-result v24
 
-					if-eqz v24, :cond_14f
+					if-eqz v24, :cond_160
 
-					.line 98
+					.line 101
 					const/16 v24, 0x1
 
 					move/from16 v0, v24
@@ -973,12 +1008,12 @@ func init() {
 
 					move-result-object v21
 
-					.line 104
+					.line 107
 					.restart local v21    # "vSrc":Ljava/lang/String;
-					:goto_13c
+					:goto_14d
 					move-object/from16 v20, v13
 
-					.line 105
+					.line 108
 					.restart local v20    # "vKey":Ljava/lang/String;
 					invoke-virtual/range {v19 .. v19}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
 
@@ -988,44 +1023,44 @@ func init() {
 
 					move-result-object v22
 
-					.line 106
+					.line 109
 					.restart local v22    # "vValue":Ljava/lang/String;
 					invoke-virtual/range {v22 .. v22}, Ljava/lang/String;->isEmpty()Z
 
 					move-result v24
 
-					if-eqz v24, :cond_102
+					if-eqz v24, :cond_110
 
-					.line 107
+					.line 110
 					const/16 v22, 0x0
 
-					goto :goto_102
+					goto :goto_110
 
-					.line 99
+					.line 102
 					.end local v20    # "vKey":Ljava/lang/String;
 					.end local v21    # "vSrc":Ljava/lang/String;
 					.end local v22    # "vValue":Ljava/lang/String;
-					:cond_14f
-					if-eqz v11, :cond_154
+					:cond_160
+					if-eqz v11, :cond_165
 
-					.line 100
+					.line 103
 					move-object/from16 v21, v11
 
 					.restart local v21    # "vSrc":Ljava/lang/String;
-					goto :goto_13c
+					goto :goto_14d
 
-					.line 102
+					.line 105
 					.end local v21    # "vSrc":Ljava/lang/String;
-					:cond_154
+					:cond_165
 					const-string v21, ""
 
 					.restart local v21    # "vSrc":Ljava/lang/String;
-					goto :goto_13c
+					goto :goto_14d
 
-					.line 114
+					.line 117
 					.restart local v20    # "vKey":Ljava/lang/String;
 					.restart local v22    # "vValue":Ljava/lang/String;
-					:cond_157
+					:cond_168
 					const-string v24, "calibre:series_index"
 
 					move-object/from16 v0, v24
@@ -1036,7 +1071,7 @@ func init() {
 
 					move-result v24
 
-					if-nez v24, :cond_16f
+					if-nez v24, :cond_180
 
 					const-string v24, "group-position"
 
@@ -1048,10 +1083,10 @@ func init() {
 
 					move-result v24
 
-					if-eqz v24, :cond_179
+					if-eqz v24, :cond_18a
 
-					.line 115
-					:cond_16f
+					.line 118
+					:cond_180
 					move-object/from16 v0, v21
 
 					move-object/from16 v1, v22
@@ -1064,10 +1099,10 @@ func init() {
 					.restart local v4    # "depth":I
 					goto/16 :goto_40
 
-					.line 116
+					.line 119
 					.end local v4    # "depth":I
 					.restart local v3    # "depth":I
-					:cond_179
+					:cond_18a
 					const-string v24, "collection-type"
 
 					move-object/from16 v0, v24
@@ -1078,7 +1113,7 @@ func init() {
 
 					move-result v24
 
-					if-eqz v24, :cond_1f3
+					if-eqz v24, :cond_202
 
 					const-string v24, "series"
 
@@ -1090,9 +1125,9 @@ func init() {
 
 					move-result v24
 
-					if-nez v24, :cond_1f3
+					if-nez v24, :cond_202
 
-					.line 117
+					.line 120
 					move-object/from16 v0, v21
 
 					invoke-virtual {v9, v0}, Ljava/util/LinkedHashSet;->add(Ljava/lang/Object;)Z
@@ -1103,7 +1138,7 @@ func init() {
 					.restart local v4    # "depth":I
 					goto/16 :goto_40
 
-					.line 125
+					.line 128
 					.end local v10    # "pContent":Ljava/lang/String;
 					.end local v11    # "pId":Ljava/lang/String;
 					.end local v12    # "pName":Ljava/lang/String;
@@ -1112,7 +1147,7 @@ func init() {
 					.end local v20    # "vKey":Ljava/lang/String;
 					.end local v21    # "vSrc":Ljava/lang/String;
 					.end local v22    # "vValue":Ljava/lang/String;
-					:cond_199
+					:cond_1aa
 					invoke-virtual {v7}, Ljava/util/LinkedHashMap;->keySet()Ljava/util/Set;
 
 					move-result-object v24
@@ -1121,12 +1156,12 @@ func init() {
 
 					move-result-object v24
 
-					:cond_1a1
+					:cond_1b2
 					invoke-interface/range {v24 .. v24}, Ljava/util/Iterator;->hasNext()Z
 
 					move-result v25
 
-					if-eqz v25, :cond_1f0
+					if-eqz v25, :cond_1ff
 
 					invoke-interface/range {v24 .. v24}, Ljava/util/Iterator;->next()Ljava/lang/Object;
 
@@ -1134,7 +1169,7 @@ func init() {
 
 					check-cast v17, Ljava/lang/String;
 
-					.line 126
+					.line 129
 					.local v17, "src":Ljava/lang/String;
 					move-object/from16 v0, v17
 
@@ -1144,11 +1179,11 @@ func init() {
 
 					check-cast v15, Ljava/lang/String;
 
-					.line 127
+					.line 130
 					.local v15, "series":Ljava/lang/String;
-					if-eqz v15, :cond_1a1
+					if-eqz v15, :cond_1b2
 
-					.line 128
+					.line 131
 					move-object/from16 v0, v17
 
 					invoke-virtual {v8, v0}, Ljava/util/LinkedHashMap;->get(Ljava/lang/Object;)Ljava/lang/Object;
@@ -1157,33 +1192,30 @@ func init() {
 
 					check-cast v16, Ljava/lang/String;
 
-					.line 129
+					.line 132
 					.local v16, "seriesIndex":Ljava/lang/String;
-					if-eqz v16, :cond_1a1
-
-					.line 130
 					move-object/from16 v0, v17
 
 					invoke-virtual {v9, v0}, Ljava/util/LinkedHashSet;->contains(Ljava/lang/Object;)Z
 
 					move-result v25
 
-					if-nez v25, :cond_1a1
+					if-nez v25, :cond_1b2
 
-					.line 131
+					.line 133
 					move-object/from16 v0, p0
 
 					iput-object v15, v0, Lcom/faultexception/reader/book/EPubBook;->mSeries:Ljava/lang/String;
 
-					.line 132
+					.line 134
 					move-object/from16 v0, v16
 
 					move-object/from16 v1, p0
 
 					iput-object v0, v1, Lcom/faultexception/reader/book/EPubBook;->mSeriesIndex:Ljava/lang/String;
 
-					.line 133
-					if-eqz v17, :cond_1ed
+					.line 135
+					if-eqz v17, :cond_1fc
 
 					new-instance v24, Ljava/lang/StringBuilder;
 
@@ -1207,30 +1239,30 @@ func init() {
 
 					move-result-object v24
 
-					.line 138
+					.line 139
 					.end local v15    # "series":Ljava/lang/String;
 					.end local v16    # "seriesIndex":Ljava/lang/String;
 					.end local v17    # "src":Ljava/lang/String;
-					:goto_1ec
+					:goto_1fb
 					return-object v24
 
-					.line 133
+					.line 135
 					.restart local v15    # "series":Ljava/lang/String;
 					.restart local v16    # "seriesIndex":Ljava/lang/String;
 					.restart local v17    # "src":Ljava/lang/String;
-					:cond_1ed
+					:cond_1fc
 					const-string v24, "calibre"
 
-					goto :goto_1ec
+					goto :goto_1fb
 
-					.line 138
+					.line 139
 					.end local v15    # "series":Ljava/lang/String;
 					.end local v16    # "seriesIndex":Ljava/lang/String;
 					.end local v17    # "src":Ljava/lang/String;
-					:cond_1f0
+					:cond_1ff
 					const/16 v24, 0x0
 
-					goto :goto_1ec
+					goto :goto_1fb
 
 					.end local v4    # "depth":I
 					.restart local v3    # "depth":I
@@ -1242,7 +1274,7 @@ func init() {
 					.restart local v20    # "vKey":Ljava/lang/String;
 					.restart local v21    # "vSrc":Ljava/lang/String;
 					.restart local v22    # "vValue":Ljava/lang/String;
-					:cond_1f3
+					:cond_202
 					move v4, v3
 
 					.end local v3    # "depth":I
@@ -1250,14 +1282,16 @@ func init() {
 					goto/16 :goto_40
 
 					.line 39
-					:pswitch_data_1f6
+					nop
+
+					:pswitch_data_206
 					.packed-switch 0x2
 						:pswitch_57
 						:pswitch_50
 					.end packed-switch
 
 					.line 48
-					:pswitch_data_1fe
+					:pswitch_data_20e
 					.packed-switch 0x1
 						:pswitch_b9
 						:pswitch_c8
@@ -1265,7 +1299,7 @@ func init() {
 					.end packed-switch
 
 					.line 75
-					:pswitch_data_208
+					:pswitch_data_218
 					.packed-switch 0x2
 						:pswitch_e6
 						:pswitch_e9
