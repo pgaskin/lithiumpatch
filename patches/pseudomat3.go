@@ -132,5 +132,81 @@ func init() {
 				),
 			),
 		),
+		// non-full-width elastic tab indicator for the reader drawer
+		WriteFileString("res/drawable/m3_tab_indicator.xml",
+			FixIndent(`
+			<?xml version="1.0" encoding="utf-8"?>
+			<inset xmlns:android="http://schemas.android.com/apk/res/android" android:insetLeft="-10.0dp" android:insetRight="-10.0dp">
+				<shape android:shape="rectangle">
+					<corners android:topLeftRadius="3.0dp" android:topRightRadius="3.0dp" />
+					<solid android:color="@android:color/white" />
+					<size android:height="3.0dp" />
+				</shape>
+			</inset>
+			`),
+		),
+		DefineR("smali/com/faultexception/reader", "drawable", "m3_tab_indicator"),
+		PatchFile("res/layout/fragment_reader_drawer.xml",
+			ReplaceString(
+				`android:layout_height="?actionBarSize" app:tabGravity="fill" />`,
+				`android:layout_height="?actionBarSize" app:tabGravity="fill" app:tabIndicator="@drawable/m3_tab_indicator" app:tabIndicatorHeight="3.0dp" app:tabIndicatorFullWidth="false" app:tabIndicatorAnimationMode="elastic" />`,
+			),
+		),
+		// pill-style drawer items
+		WriteFileString("res/drawable/drawer_item_background_selector.xml",
+			FixIndent(`
+			<?xml version="1.0" encoding="utf-8"?>
+			<selector xmlns:android="http://schemas.android.com/apk/res/android">
+				<item android:state_activated="true">
+					<inset android:insetLeft="12.0dp" android:insetRight="12.0dp">
+						<shape android:shape="rectangle">
+							<corners android:radius="12.0dp" />
+							<solid android:color="@color/drawer_item_selected_bg_color" />
+						</shape>
+					</inset>
+				</item>
+			</selector>
+			`),
+		),
+		// preserve 16dp icon inset (since the pill is inset by 12dp)
+		PatchFiles(
+			[]string{
+				"res/layout/drawer_item.xml",
+				"res/layout-v17/drawer_item.xml",
+			},
+			ReplaceString(
+				`android:paddingLeft="16.0dp" android:paddingRight="16.0dp"`,
+				`android:paddingLeft="28.0dp" android:paddingRight="28.0dp"`,
+			),
+		),
+		// remove drawer divider lines (it looks too busy with them)
+		PatchFiles(
+			[]string{
+				"res/layout/drawer_divider.xml",
+				"res/layout/categories_list_header.xml",
+				"res/layout/folders_list_header.xml",
+			},
+			ReplaceString(
+				`<View android:background="@color/divider"`,
+				`<View android:background="@android:color/transparent"`,
+			),
+		),
+		// m3 drawer items don't change color when selected
+		WriteFileString("res/color/drawer_text_color_selector.xml",
+			FixIndent(`
+			<?xml version="1.0" encoding="utf-8"?>
+			<selector xmlns:android="http://schemas.android.com/apk/res/android">
+				<item android:color="?android:textColorPrimary" />
+			</selector>
+			`),
+		),
+		WriteFileString("res/color/drawer_icon_color_selector.xml",
+			FixIndent(`
+			<?xml version="1.0" encoding="utf-8"?>
+			<selector xmlns:android="http://schemas.android.com/apk/res/android">
+				<item android:color="?colorControlNormal" />
+			</selector>
+			`),
+		),
 	)
 }

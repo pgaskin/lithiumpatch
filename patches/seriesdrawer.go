@@ -382,7 +382,7 @@ func seriesdrawer() {
 		WriteFileString("res/layout/series_list_header.xml", FixIndent(`
 		<?xml version="1.0" encoding="utf-8"?>
 		<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent">
-			<View android:background="@color/divider" android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="8dp"/>
+			<View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="8dp"/>
 			<TextView android:textSize="14sp" android:textColor="?android:attr/textColorSecondary" android:gravity="center_vertical" android:paddingLeft="16dp" android:paddingRight="16dp" android:layout_width="match_parent" android:layout_height="48dp" android:text="Series" android:fontFamily="sans-serif-medium"/>
 		</LinearLayout>
 		`)),
