@@ -305,11 +305,29 @@ func init() {
 				.end method
 				`),
 			),
-			// Call updateProgressView in onBindViewHolder for both layouts (just after cover/noCover handling)
+			// Call updateProgressView in onBindViewHolder, after the
+			// cover/noCover visibility stuff , so it also runs for books
+			// without a cover
 			InMethod("onBindViewHolder(Lcom/faultexception/reader/BooksAdapter$ViewHolder;I)V",
 				ReplaceStringAppend(
-					"\n"+`    iget-object v0, p1, Lcom/faultexception/reader/BooksAdapter$ViewHolder;->noCoverView:Landroid/view/View;`+"\n\n"+`    if-eqz p2, :cond_7`,
-					"\n"+`    iget-object v0, p1, Lcom/faultexception/reader/BooksAdapter$ViewHolder;->noCoverView:Landroid/view/View;`+"\n\n"+`    if-eqz p2, :cond_7`+"\n"+`    invoke-direct {p0, p1}, Lcom/faultexception/reader/BooksAdapter;->updateProgressView(Lcom/faultexception/reader/BooksAdapter$ViewHolder;)V`,
+					FixIndent("\n"+`
+						iget-object v0, p1, Lcom/faultexception/reader/BooksAdapter$ViewHolder;->noCoverView:Landroid/view/View;
+
+						if-eqz p2, :cond_7
+
+						const/16 p2, 0x8
+
+						goto :goto_4
+
+						:cond_7
+						const/4 p2, 0x0
+
+						:goto_4
+						invoke-virtual {v0, p2}, Landroid/view/View;->setVisibility(I)V
+					`),
+					FixIndent("\n"+`
+						invoke-direct {p0, p1}, Lcom/faultexception/reader/BooksAdapter;->updateProgressView(Lcom/faultexception/reader/BooksAdapter$ViewHolder;)V
+					`),
 				),
 			),
 			// Add progress column index in swapCursor - must follow pattern of previous
