@@ -10,6 +10,7 @@ public class DictionaryEntry {
     public final MeaningGroup[] meaningGroups;
     public final String info;
     public final String source;
+    public final String html; // if set, replaces meaningGroups
 
     DictionaryEntry(ByteBuffer buf) {
         final DictionaryUtil.Buffer b = wrapBuffer(buf);
@@ -21,6 +22,7 @@ public class DictionaryEntry {
         }
         this.info = b.str();
         this.source = b.str();
+        this.html = b.str();
     }
 
     public static class MeaningGroup {
@@ -88,6 +90,10 @@ public class DictionaryEntry {
                     }
                 }
             }
+        }
+        if (!this.html.isEmpty()) {
+            s.append(this.html); // debug
+            s.append("\n");
         }
         if (showEntryInfo && !this.info.isEmpty()) {
             s.append("  ");

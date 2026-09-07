@@ -768,6 +768,14 @@ var Dictionary = (function() {
             font-style: italic;
             margin-top: 4px;
         }
+        section > .entry-html {
+            margin: 8px 0 16px;
+            /* see the note on deep selection above */
+            user-select: text;
+        }
+        section > .entry-html img {
+            max-width: 100%;
+        }
         section > .entry-info {
             opacity: 0.75;
             margin-top: 8px;
@@ -796,7 +804,9 @@ var Dictionary = (function() {
                     <div class="pronunciation">${x.pronunciation}</div>
                 `}
             </header>
-            ${x.meaningGroups.map(x => html`
+            ${x.html.length ? html`
+                <div class="entry-html">$${x.html /* if we ever support runtime dictionaries, this MUST be sanitized */}</div>
+            ` : x.meaningGroups.map(x => html`
                 ${!!x.info.length && html`
                     <div class="meaning-group-info">${x.info.join(" \u2014 ")}</div>
                 `}

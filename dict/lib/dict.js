@@ -426,6 +426,7 @@ export class DictionaryEntry {
         }))
         this.info = b.str()
         this.source = b.str()
+        this.html = b.str() // if set, replaces meaningGroups
     }
 
     toString(showExamples = true, showEntryInfo = true) {
@@ -462,6 +463,10 @@ export class DictionaryEntry {
                     }
                 }
             }
+        }
+        if (this.html.length) {
+            s += this.html // debug
+            s += "\n"
         }
         if (showEntryInfo && this.info.length) {
             s += "  "

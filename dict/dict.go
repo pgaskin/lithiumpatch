@@ -31,6 +31,7 @@ type Entry struct {
 	MeaningGroups []EntryMeaning //
 	Info          string         // optional; e.g., etymology
 	Source        string         // optional
+	HTML          string         // optional; replaces MeaningGroups (THIS MUST BE PRE-SANITIZED)
 }
 
 // EntryMeaning contains the definitions for one sub-form of a word.
@@ -303,6 +304,10 @@ func (b *builder) run() error {
 				// Source
 				buf = binary.BigEndian.AppendUint32(buf, uint32(len(e.Source)))
 				buf = append(buf, e.Source...)
+
+				// HTML
+				buf = binary.BigEndian.AppendUint32(buf, uint32(len(e.HTML)))
+				buf = append(buf, e.HTML...)
 			}
 
 			w.Write(buf)
