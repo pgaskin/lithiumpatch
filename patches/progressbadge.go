@@ -10,12 +10,12 @@ import (
 )
 
 func init() {
-	Register("gridprogress",
+	Register("progressbadge",
 		// Add preference toggle
 		PatchFile("res/xml/preferences.xml",
 			ReplaceStringAppend(
 				"\n"+`    <PreferenceCategory android:title="@string/pref_category_advanced">`,
-				"\n"+`        <SwitchPreferenceCompat android:title="Show reading progress (grid/list view)" android:key="show_grid_progress" android:defaultValue="false" />`,
+				"\n"+`        <SwitchPreferenceCompat android:title="Show reading progress badge" android:key="show_progress_badge" android:defaultValue="false" />`,
 			),
 		),
 		// Add progress view ID
@@ -110,7 +110,7 @@ func init() {
 
 					invoke-static {v0}, Landroid/preference/PreferenceManager;->getDefaultSharedPreferences(Landroid/content/Context;)Landroid/content/SharedPreferences;
 					move-result-object v0
-					const-string v1, "show_grid_progress"
+					const-string v1, "show_progress_badge"
 					const/4 v2, 0x0
 					invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
 					move-result v0
@@ -333,7 +333,7 @@ func init() {
 					invoke-static {v0}, Landroid/preference/PreferenceManager;->getDefaultSharedPreferences(Landroid/content/Context;)Landroid/content/SharedPreferences;
 					move-result-object v0
 
-					const-string v1, "show_grid_progress"
+					const-string v1, "show_progress_badge"
 					const/4 v2, 0x0
 					invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
 					move-result v1
