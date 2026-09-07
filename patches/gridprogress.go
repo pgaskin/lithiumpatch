@@ -274,17 +274,17 @@ func init() {
 
 					const/high16 v5, 0x42c80000    # 100.0f
 
-					if-eqz v4, :no_progress
+					if-eqz v4, :unknown_progress
 					iget-object v6, v4, Lcom/faultexception/reader/book/EPubPageMap;->items:Ljava/util/Map;
 					invoke-interface {v6, v0}, Ljava/util/Map;->get(Ljava/lang/Object;)Ljava/lang/Object;
 					move-result-object v6
 					check-cast v6, Lcom/faultexception/reader/book/EPubPageMap$Item;
 
-					if-eqz v6, :no_progress
+					if-eqz v6, :unknown_progress
 					iget v7, v6, Lcom/faultexception/reader/book/EPubPageMap$Item;->pageCount:I
-					if-lez v7, :no_progress
+					if-lez v7, :unknown_progress
 					iget v4, v4, Lcom/faultexception/reader/book/EPubPageMap;->totalPageCount:I
-					if-lez v4, :no_progress
+					if-lez v4, :unknown_progress
 
 					iget v8, v6, Lcom/faultexception/reader/book/EPubPageMap$Item;->pageStart:I
 					add-int/lit8 v7, v7, -0x1
@@ -308,6 +308,12 @@ func init() {
 					:catch_0
 					move-exception v0
 
+					# -2: started, but no page map (i.e., book not opened since import)
+					:unknown_progress
+					const/4 v0, -0x2
+					return v0
+
+					# -1: not started (i.e., no position)
 					:no_progress
 					const/4 v0, -0x1
 					return v0
@@ -345,9 +351,15 @@ func init() {
 					invoke-direct {p0}, Lcom/faultexception/reader/BooksAdapter;->getProgressPercentage()I
 					move-result v0
 
-					if-ltz v0, :hide_progress
+					const/4 v1, -0x1
+					if-eq v0, v1, :hide_progress
 
-					# Format percentage string
+					const/4 v1, -0x2
+					if-ne v0, v1, :format_percent
+					const-string v0, "?%"
+					goto :show_progress
+
+					:format_percent
 					new-instance v1, Ljava/lang/StringBuilder;
 					invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
 					invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
@@ -356,7 +368,7 @@ func init() {
 					invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
 					move-result-object v0
 
-					# Show percentage
+					:show_progress
 					invoke-virtual {v3, v0}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
 					const/16 v2, 0x0 # android.View.VISIBLE
 					invoke-virtual {v3, v2}, Landroid/widget/TextView;->setVisibility(I)V
