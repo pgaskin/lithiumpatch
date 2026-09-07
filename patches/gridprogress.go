@@ -81,6 +81,50 @@ func init() {
 				"\n"+`.field progress:I`,
 			),
 		),
+		// Reload library from DB when showing the main activity to update
+		// progress badges (if badges are enabled).
+		PatchFile("smali/com/faultexception/reader/BooksFragment.smali",
+			ReplaceStringAppend(
+				"\n"+`.field private mAdapter:Lcom/faultexception/reader/BooksAdapter;`,
+				"\n"+`.field private mProgressResumed:Z`,
+			),
+			ReplaceStringPrepend(
+				FixIndent("\n"+`
+				.method public runQuery(Z)V
+				`),
+				FixIndent("\n"+`
+				.method public onResume()V
+					.locals 3
+
+					invoke-super {p0}, Landroidx/fragment/app/Fragment;->onResume()V
+
+					# skip the initial resume (already queried)
+					iget-boolean v0, p0, Lcom/faultexception/reader/BooksFragment;->mProgressResumed:Z
+					const/4 v1, 0x1
+					iput-boolean v1, p0, Lcom/faultexception/reader/BooksFragment;->mProgressResumed:Z
+					if-eqz v0, :no_refresh
+
+					invoke-virtual {p0}, Lcom/faultexception/reader/BooksFragment;->getActivity()Landroidx/fragment/app/FragmentActivity;
+					move-result-object v0
+					if-eqz v0, :no_refresh
+
+					invoke-static {v0}, Landroid/preference/PreferenceManager;->getDefaultSharedPreferences(Landroid/content/Context;)Landroid/content/SharedPreferences;
+					move-result-object v0
+					const-string v1, "show_grid_progress"
+					const/4 v2, 0x0
+					invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+					move-result v0
+					if-eqz v0, :no_refresh
+
+					const/4 v0, 0x0
+					invoke-virtual {p0, v0}, Lcom/faultexception/reader/BooksFragment;->runQuery(Z)V
+
+					:no_refresh
+					return-void
+				.end method
+				`),
+			),
+		),
 		// Modify BooksAdapter to handle progress display
 		PatchFile("smali/com/faultexception/reader/BooksAdapter.smali",
 			// Add page map cache field
