@@ -15,14 +15,34 @@ func init() {
 		),
 		PatchFile("smali/com/faultexception/reader/BooksAdapter.smali",
 			InMethod("onBindViewHolder(Lcom/faultexception/reader/BooksAdapter$ViewHolder;I)V",
-				// note: grid view is layoutMode 0x0, and the code is shared between dark/light
-				ReplaceStringAppend(
-					"\n"+`    .line 193`+"\n"+`    iget-object v2, p1, Lcom/faultexception/reader/BooksAdapter$ViewHolder;->footerView:Landroid/view/View;`,
-					"\n"+`    invoke-direct {p0, v2}, Lcom/faultexception/reader/BooksAdapter;->maybeHideFooter(Landroid/view/View;)V`,
-				),
-				ReplaceStringAppend(
-					"\n"+`    .line 195`+"\n"+`    iget-object v2, p1, Lcom/faultexception/reader/BooksAdapter$ViewHolder;->footerView:Landroid/view/View;`,
-					"\n"+`    invoke-direct {p0, v2}, Lcom/faultexception/reader/BooksAdapter;->maybeHideFooter(Landroid/view/View;)V`,
+				// note: grid is mLayoutMode=0 is the grid, :cond_5 is for the list view in dark mode
+				MustContain(FixIndent("\n"+`
+					iget v3, p0, Lcom/faultexception/reader/BooksAdapter;->mLayoutMode:I
+
+					if-nez v3, :cond_5
+				`)),
+				MustContain(FixIndent("\n"+`
+					:cond_5
+					iget-boolean v2, p0, Lcom/faultexception/reader/BooksAdapter;->mDarkMode:Z
+				`)),
+				// note: only the grid branch currently has the trailing goto
+				ReplaceString(
+					FixIndent("\n"+`
+						iget-object v2, p1, Lcom/faultexception/reader/BooksAdapter$ViewHolder;->footerView:Landroid/view/View;
+
+						invoke-virtual {v2, v0}, Landroid/view/View;->setBackgroundColor(I)V
+
+						goto :goto_3
+					`),
+					FixIndent("\n"+`
+						iget-object v2, p1, Lcom/faultexception/reader/BooksAdapter$ViewHolder;->footerView:Landroid/view/View;
+
+						invoke-virtual {v2, v0}, Landroid/view/View;->setBackgroundColor(I)V
+
+						invoke-direct {p0, v2}, Lcom/faultexception/reader/BooksAdapter;->maybeHideFooter(Landroid/view/View;)V
+
+						goto :goto_3
+					`),
 				),
 			),
 			ReplaceStringPrepend(
