@@ -14,6 +14,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 - Custom fonts.
 - Additional font script support (e.g., Thai).
 - Smaller minimum font size.
+- Finer control over font size.
 - Additional information in the reader footer.
 - Series metadata support.
 - Series section in library drawer.
@@ -21,6 +22,7 @@ Adds additional functionality to the Lithium EPUB Reader Android app.
 - Support for inverted portrait/landscape rotation.
 - Expand display settings popup by default.
 - Support for hyphenation.
+- Book progress badge.
 - Additional built-in themes.
 - Material You colors on Android 12+.
 - Full-bleed background in fullscreen mode on devices with a notch.
