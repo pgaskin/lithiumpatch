@@ -130,13 +130,13 @@ func init() {
 			// Add page map cache field
 			ReplaceStringAppend(
 				"\n"+`.field private mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;`,
-				"\n"+`.field private mPageMapCache:Ljava/util/Map;`,
+				"\n"+`.field private mProgressCache:Ljava/util/Map;`+"\n"+`.field private static sPageMapIndexed:Z`,
 			),
 			// Initialize page map cache in constructor
 			InMethod("<init>(Landroidx/appcompat/app/AppCompatActivity;Lcom/faultexception/reader/BooksAdapter$OnItemClickListener;Lcom/faultexception/reader/util/ActionModeMultiCallback;)V",
 				ReplaceStringAppend(
 					"\n"+`    iput-object p1, p0, Lcom/faultexception/reader/BooksAdapter;->mGlide:Lcom/bumptech/glide/RequestManager;`,
-					"\n"+`    new-instance v0, Ljava/util/HashMap;`+"\n"+`    invoke-direct {v0}, Ljava/util/HashMap;-><init>()V`+"\n"+`    iput-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mPageMapCache:Ljava/util/Map;`,
+					"\n"+`    new-instance v0, Ljava/util/HashMap;`+"\n"+`    invoke-direct {v0}, Ljava/util/HashMap;-><init>()V`+"\n"+`    iput-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mProgressCache:Ljava/util/Map;`,
 				),
 			),
 			// Add method to calculate progress percentage
@@ -146,40 +146,73 @@ func init() {
 				`),
 				FixIndent("\n"+`
 				.method private getPageMap(J)Lcom/faultexception/reader/book/EPubPageMap;
-					.locals 4
+					.locals 2
 
-					iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mPageMapCache:Ljava/util/Map;
-					if-nez v0, :has_cache
-					new-instance v0, Ljava/util/HashMap;
-					invoke-direct {v0}, Ljava/util/HashMap;-><init>()V
-					iput-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mPageMapCache:Ljava/util/Map;
-
-					:has_cache
-					iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mPageMapCache:Ljava/util/Map;
-					invoke-static {p1, p2}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
-					move-result-object v1
-					invoke-interface {v0, v1}, Ljava/util/Map;->get(Ljava/lang/Object;)Ljava/lang/Object;
-					move-result-object v0
-					check-cast v0, Lcom/faultexception/reader/book/EPubPageMap;
-
-					if-nez v0, :return_map
-
-					iget-object v2, p0, Lcom/faultexception/reader/BooksAdapter;->mActivity:Landroidx/appcompat/app/AppCompatActivity;
-					invoke-static {v2}, Lcom/faultexception/reader/db/DatabaseProvider;->getDatabase(Landroid/content/Context;)Landroid/database/sqlite/SQLiteDatabase;
-					move-result-object v2
-					invoke-static {p1, p2, v2}, Lcom/faultexception/reader/book/EPubPageMap;->readFromCache(JLandroid/database/sqlite/SQLiteDatabase;)Lcom/faultexception/reader/book/EPubPageMap;
+					iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mActivity:Landroidx/appcompat/app/AppCompatActivity;
+					invoke-static {v0}, Lcom/faultexception/reader/db/DatabaseProvider;->getDatabase(Landroid/content/Context;)Landroid/database/sqlite/SQLiteDatabase;
 					move-result-object v0
 
-					if-eqz v0, :return_map
+					# index epub_page_map.book_id so readFromCache isn't a full scan (and only try once per launch)
+					sget-boolean v1, Lcom/faultexception/reader/BooksAdapter;->sPageMapIndexed:Z
+					if-nez v1, :indexed
+					const/4 v1, 0x1
+					sput-boolean v1, Lcom/faultexception/reader/BooksAdapter;->sPageMapIndexed:Z
+					const-string v1, "CREATE INDEX IF NOT EXISTS lithiumpatch_epub_page_map_book_id ON epub_page_map (book_id)"
+					invoke-virtual {v0, v1}, Landroid/database/sqlite/SQLiteDatabase;->execSQL(Ljava/lang/String;)V
 
-					iget-object v2, p0, Lcom/faultexception/reader/BooksAdapter;->mPageMapCache:Ljava/util/Map;
-					invoke-interface {v2, v1, v0}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
-
-					:return_map
+					:indexed
+					invoke-static {p1, p2, v0}, Lcom/faultexception/reader/book/EPubPageMap;->readFromCache(JLandroid/database/sqlite/SQLiteDatabase;)Lcom/faultexception/reader/book/EPubPageMap;
+					move-result-object v0
 					return-object v0
 				.end method
 
 				.method private getProgressPercentage()I
+					.locals 6
+
+					# cached for each book id, cleared in swapCursor, including missing results (so page map read is cached at library load instead of for each bind)
+					iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mCursor:Landroid/database/Cursor;
+					if-nez v0, :have_cursor
+					const/4 v0, -0x1
+					return v0
+
+					:have_cursor
+					iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mProgressCache:Ljava/util/Map;
+					if-nez v0, :have_cache
+					new-instance v0, Ljava/util/HashMap;
+					invoke-direct {v0}, Ljava/util/HashMap;-><init>()V
+					iput-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mProgressCache:Ljava/util/Map;
+
+					:have_cache
+					iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mCursor:Landroid/database/Cursor;
+					iget-object v1, p0, Lcom/faultexception/reader/BooksAdapter;->mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;
+					iget v1, v1, Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;->id:I
+					invoke-interface {v0, v1}, Landroid/database/Cursor;->getLong(I)J
+					move-result-wide v0
+					invoke-static {v0, v1}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+					move-result-object v0
+
+					iget-object v1, p0, Lcom/faultexception/reader/BooksAdapter;->mProgressCache:Ljava/util/Map;
+					invoke-interface {v1, v0}, Ljava/util/Map;->get(Ljava/lang/Object;)Ljava/lang/Object;
+					move-result-object v1
+					if-eqz v1, :compute
+					check-cast v1, Ljava/lang/Integer;
+					invoke-virtual {v1}, Ljava/lang/Integer;->intValue()I
+					move-result v1
+					return v1
+
+					:compute
+					invoke-direct {p0}, Lcom/faultexception/reader/BooksAdapter;->computeProgressPercentage()I
+					move-result v1
+
+					iget-object v2, p0, Lcom/faultexception/reader/BooksAdapter;->mProgressCache:Ljava/util/Map;
+					invoke-static {v1}, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+					move-result-object v3
+					invoke-interface {v2, v0, v3}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+					return v1
+				.end method
+
+				.method private computeProgressPercentage()I
 					.locals 14
 
 					:try_start_0
@@ -241,17 +274,17 @@ func init() {
 
 					const/high16 v5, 0x42c80000    # 100.0f
 
-					if-eqz v4, :fallback_percent
+					if-eqz v4, :no_progress
 					iget-object v6, v4, Lcom/faultexception/reader/book/EPubPageMap;->items:Ljava/util/Map;
 					invoke-interface {v6, v0}, Ljava/util/Map;->get(Ljava/lang/Object;)Ljava/lang/Object;
 					move-result-object v6
 					check-cast v6, Lcom/faultexception/reader/book/EPubPageMap$Item;
 
-					if-eqz v6, :fallback_percent
+					if-eqz v6, :no_progress
 					iget v7, v6, Lcom/faultexception/reader/book/EPubPageMap$Item;->pageCount:I
-					if-lez v7, :fallback_percent
+					if-lez v7, :no_progress
 					iget v4, v4, Lcom/faultexception/reader/book/EPubPageMap;->totalPageCount:I
-					if-lez v4, :fallback_percent
+					if-lez v4, :no_progress
 
 					iget v8, v6, Lcom/faultexception/reader/book/EPubPageMap$Item;->pageStart:I
 					add-int/lit8 v7, v7, -0x1
@@ -266,12 +299,6 @@ func init() {
 					int-to-float v4, v4
 					div-float/2addr v7, v4
 					invoke-static {v7}, Ljava/lang/Math;->round(F)I
-					move-result v0
-					return v0
-
-					:fallback_percent
-					mul-float v3, v3, v5
-					invoke-static {v3}, Ljava/lang/Math;->round(F)I
 					move-result v0
 					return v0
 
@@ -388,6 +415,12 @@ func init() {
 						invoke-interface {p1, v1}, Landroid/database/Cursor;->getColumnIndexOrThrow(Ljava/lang/String;)I
 						move-result v1
 						iput v1, v0, Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;->progress:I
+
+						# reset stale cache for new cursor
+						iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mProgressCache:Ljava/util/Map;
+						if-eqz v0, :no_progress_cache
+						invoke-interface {v0}, Ljava/util/Map;->clear()V
+						:no_progress_cache
 					`),
 				),
 			),
