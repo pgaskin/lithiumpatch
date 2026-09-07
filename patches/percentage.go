@@ -3,7 +3,9 @@
 // Add chapter progress and percentage to the reader footer.
 package patches
 
-import . "github.com/pgaskin/lithiumpatch/patches/patchdef"
+import (
+	. "github.com/pgaskin/lithiumpatch/patches/patchdef"
+)
 
 func init() {
 	Register("percentage",
@@ -17,8 +19,8 @@ func init() {
 			InMethod("updateReadingProgress()V",
 				// make new v9, v10 vars to avoid conflicts and ease updating
 				ReplaceString(
-					".locals 9",
-					".locals 11",
+					"    .locals 8\n",
+					"    .locals 11\n",
 				),
 				ReplaceString(
 					FixIndent("\n"+`
@@ -31,7 +33,7 @@ func init() {
 				),
 				ReplaceStringAppend(
 					FixIndent("\n"+`
-						aput-object v8, v2, v4
+						aput-object v7, v2, v4
 					`),
 					FixIndent("\n"+`
 						iget-object v9, p0, Lcom/faultexception/reader/ReaderActivity;->mBookView:Lcom/faultexception/reader/content/BookView;

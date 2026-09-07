@@ -17,13 +17,13 @@ func init() {
 		PatchFile("smali/com/faultexception/reader/ReaderActivity.smali",
 			InMethod("onCreate(Landroid/os/Bundle;)V",
 				// if mFullscreenEnabled and api 28
-				MustContain("\n"+`    const/4 v1, 0x1`), // LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-				MustContain("\n"+`    iput v1, v4, Landroid/view/WindowManager$LayoutParams;->layoutInDisplayCutoutMode:I`),
+				MustContain("\n"+`    const/4 v0, 0x1`), // LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+				// note: d8 moves the layoutInDisplayCutoutMode iput into a synthetic api model class
+				MustContain("\n"+`    invoke-static {v2, v0}, Lcom/bumptech/glide/util/LogTime$$ExternalSyntheticApiModelOutline0;->m(Landroid/view/WindowManager$LayoutParams;I)V`),
 			),
 			InMethod("setTheme(Lcom/faultexception/reader/themes/Theme;)V",
 				ReplaceStringAppend(
 					FixIndent("\n"+`
-						.line 1329
 						iget v1, p1, Lcom/faultexception/reader/themes/Theme;->backgroundColor:I
 
 						or-int/2addr v1, v0
@@ -33,7 +33,6 @@ func init() {
 						:cond_0
 						const/4 v1, -0x1
 
-						.line 1330
 						:goto_0
 					`),
 					FixIndent("\n"+`

@@ -64,19 +64,19 @@ func shaFile(name string) (string, error) {
 }
 
 func fetch() ([]byte, error) {
-	fmt.Printf("info: downloading apk from apkmirror %s\n", app.LithiumURL_APKM)
-	if b, err := internal.FetchAPK_APKM(app.LithiumURL_APKM); err != nil {
-		fmt.Fprintf(os.Stderr, "warn: failed to download apk from apkmirror (error: %v)\n", err)
+	fmt.Printf("info: downloading apk from aptoide %s\n", app.LithiumURL_Aptoide)
+	if b, err := internal.FetchAPK_Aptoide(app.LithiumURL_Aptoide); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: failed to download apk from aptoide (error: %v)\n", err)
 	} else {
 		return b, nil
 	}
 
-	fmt.Printf("info: downloading apk from internet archive %s\n", app.LithiumURL_IA)
-	if b, err := internal.FetchAPK_IA(app.LithiumURL_IA); err != nil {
-		fmt.Fprintf(os.Stderr, "warn: failed to download apk from internet archive (error: %v)\n", err)
-	} else {
-		return b, nil
-	}
+	//fmt.Printf("info: downloading apk from internet archive %s\n", app.LithiumURL_IA)
+	//if b, err := internal.FetchAPK_IA(app.LithiumURL_IA); err != nil {
+	//	fmt.Fprintf(os.Stderr, "warn: failed to download apk from internet archive (error: %v)\n", err)
+	//} else {
+	//	return b, nil
+	//}
 
 	return nil, fmt.Errorf("all sources failed")
 }

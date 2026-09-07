@@ -21,8 +21,8 @@ func init() {
 				`<ImageButton android:id="@id/expand_more" android:visibility="gone"`,
 			),
 			ReplaceString(
-				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dip" android:visibility="gone"`,
-				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dip" android:visibility="visible"`,
+				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dp" android:visibility="gone"`,
+				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dp" android:visibility="visible"`,
 			),
 		),
 		PatchFile("res/layout-v17/fragment_display_settings.xml",
@@ -39,8 +39,8 @@ func init() {
 				`<ImageButton android:id="@id/expand_more" android:visibility="gone"`,
 			),
 			ReplaceString(
-				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dip" android:visibility="gone"`,
-				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dip" android:visibility="visible"`,
+				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dp" android:visibility="gone"`,
+				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dp" android:visibility="visible"`,
 			),
 		),
 		PatchFile(`smali/com/faultexception/reader/DisplaySettingsFragment.smali`,

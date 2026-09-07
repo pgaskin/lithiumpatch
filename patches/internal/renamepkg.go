@@ -13,12 +13,6 @@ func init() {
 		bkpdir = "LithiumPatchedBackups"
 	)
 	Register("renamepkg",
-		PatchFile("apktool.yml",
-			ReplaceString(
-				`renameManifestPackage: null`,
-				`renameManifestPackage: "`+newpkg+`"`,
-			),
-		),
 		PatchFile("AndroidManifest.xml",
 			ReplaceString(
 				`package="com.faultexception.reader"`,
@@ -39,7 +33,7 @@ func init() {
 				`path="`+bkpdir+`/"`,
 			),
 		),
-		PatchFile("smali/com/faultexception/reader/backup/BackupsActivity.smali",
+		PatchFile("smali/com/faultexception/reader/backup/BackupsSettingsFragment.smali",
 			ReplaceString(
 				`"LithiumBackups"`,
 				`"`+bkpdir+`"`,

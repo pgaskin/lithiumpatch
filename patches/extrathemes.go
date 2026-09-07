@@ -44,7 +44,7 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 	for _, t := range ts {
 		fixedSyncIDs = append(fixedSyncIDs, t.SyncID)
 	}
-	PatchFile("smali/com/faultexception/reader/db/ThemesTable.smali",
+	if err := PatchFile("smali/com/faultexception/reader/db/ThemesTable.smali",
 		InMethod("<clinit>()V",
 			ReplaceString(
 				FixIndent("\n"+`
@@ -85,7 +85,9 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 				`, fixedSyncIDs)),
 			),
 		),
-	).Do(apk, diffwriter)
+	).Do(apk, diffwriter); err != nil {
+		return err
+	}
 
 	// DatabaseOpenHelper migrations
 	// - 23 <= i < 30
@@ -106,7 +108,7 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 	// - called by DatabaseOpenHelper migrations
 	// - note: not needed for our custom themes (see my comments above)
 	// - but we should probably rewrite it so it works for both while also being simpler
-	PatchFile("smali/com/faultexception/reader/themes/ThemeManager.smali",
+	if err := PatchFile("smali/com/faultexception/reader/themes/ThemeManager.smali",
 		InMethod("removeDuplicatedBuiltinThemes(Landroid/database/sqlite/SQLiteDatabase;)V",
 			ReplaceWith(FixIndent("\n"+`
 				.locals 2
@@ -126,7 +128,9 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 				throw v1
 			`)),
 		),
-	).Do(apk, diffwriter)
+	).Do(apk, diffwriter); err != nil {
+		return err
+	}
 
 	// ThemeManager addBuiltinThemesAsHidden
 	// - adds each of the three built-in themes if their boolean parameter is set
@@ -138,7 +142,7 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 	// - creates all builtin themes, sets modified to current date if bool param is true
 	// - called by DatabaseOpenHelper initial creation and migrations
 	// - called by ThemeManager resetToDefaults -- which is called by ProManager and ThemesActivity)
-	PatchFile("smali/com/faultexception/reader/themes/ThemeManager.smali",
+	if err := PatchFile("smali/com/faultexception/reader/themes/ThemeManager.smali",
 		InMethod("createBuiltinThemes(Landroid/database/sqlite/SQLiteDatabase;Z)V",
 			ReplaceString(
 				FixIndent("\n"+`
@@ -153,7 +157,9 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 				`),
 			),
 		),
-	).Do(apk, diffwriter)
+	).Do(apk, diffwriter); err != nil {
+		return err
+	}
 
 	// ThemeManager updateCustomBuiltinThemes
 	// - new method to add custom builtin themes if they're not already there, and to update the colors if they haven't been modified by the user
@@ -165,7 +171,7 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 	// - will preserve manual theme deletions (i.e., hides), edits, or renames
 	// - will delete added custom builtin themes if removed from this file (even if edited by the user)
 	// - note: position may overlap with user themes if adding custom themes after init, but this isn't a critical issue (sort order is still consistent since it's based on position then creation time)
-	PatchFile("smali/com/faultexception/reader/themes/ThemeManager.smali",
+	if err := PatchFile("smali/com/faultexception/reader/themes/ThemeManager.smali",
 		ReplaceStringPrepend(
 			FixIndent("\n"+`
 			.method public static createBuiltinThemes(Landroid/database/sqlite/SQLiteDatabase;Z)V
@@ -210,7 +216,6 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 				FixIndent("\n"+`
 					.end annotation
 
-					.line 58
 					iget-object v0, p0, Lcom/faultexception/reader/themes/ThemeManager;->mDb:Landroid/database/sqlite/SQLiteDatabase;
 				`),
 				FixIndent("\n"+`
@@ -218,7 +223,9 @@ func (ts extrathemes) Do(apk string, diffwriter io.Writer) error {
 				`),
 			),
 		),
-	).Do(apk, diffwriter)
+	).Do(apk, diffwriter); err != nil {
+		return err
+	}
 
 	return nil
 }

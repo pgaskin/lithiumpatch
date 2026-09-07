@@ -11,8 +11,8 @@ func init() {
 	Register("minsdk",
 		PatchFile("apktool.yml",
 			ReplaceString(
-				`minSdkVersion: '16'`,
-				`minSdkVersion: '26'`,
+				`minSdkVersion: 16`,
+				`minSdkVersion: 26`,
 			),
 		),
 	)

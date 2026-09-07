@@ -21,28 +21,28 @@ func init() {
 		DefineR("smali/com/faultexception/reader", "id", "series"),
 		PatchFile("res/layout/books_grid_item.xml",
 			ReplaceStringAppend(
-				"\n"+`            <TextView android:textSize="12.0sp" android:textColor="#ffffffff" android:ellipsize="end" android:id="@id/creator" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
-				"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#ffffffff" android:ellipsize="end" android:id="@id/series" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif"/>`,
+				"\n"+`            <TextView android:textSize="12.0sp" android:textColor="#fff" android:ellipsize="end" android:id="@id/creator" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
+				"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#fff" android:ellipsize="end" android:id="@id/series" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif"/>`,
 			),
 		),
 		PatchFile("res/layout/books_list_item.xml",
 			ReplaceString(
-				`<FrameLayout android:id="@id/cover_container" android:layout_width="48.0dip" android:layout_height="fill_parent">`,
-				`<FrameLayout android:id="@id/cover_container" android:layout_width="60.0dip" android:layout_height="fill_parent">`,
+				`<FrameLayout android:id="@id/cover_container" android:layout_width="48.0dp" android:layout_height="match_parent">`,
+				`<FrameLayout android:id="@id/cover_container" android:layout_width="60.0dp" android:layout_height="match_parent">`,
 			),
 			ReplaceStringAppend(
-				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/creator" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
-				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/series" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
+				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/creator" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
+				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/series" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
 			),
 		),
 		PatchFile("res/layout-v17/books_list_item.xml",
 			ReplaceString(
-				`<FrameLayout android:id="@id/cover_container" android:layout_width="48.0dip" android:layout_height="fill_parent">`,
-				`<FrameLayout android:id="@id/cover_container" android:layout_width="60.0dip" android:layout_height="fill_parent">`,
+				`<FrameLayout android:id="@id/cover_container" android:layout_width="48.0dp" android:layout_height="match_parent">`,
+				`<FrameLayout android:id="@id/cover_container" android:layout_width="60.0dp" android:layout_height="match_parent">`,
 			),
 			ReplaceStringAppend(
-				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/creator" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
-				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/series" android:layout_width="fill_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
+				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/creator" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
+				"\n"+`            <TextView android:textSize="14.0sp" android:textColor="?android:textColorSecondary" android:ellipsize="end" android:id="@id/series" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
 			),
 		),
 		PatchFile("res/xml/preferences.xml",
@@ -217,13 +217,14 @@ func init() {
 				),
 			),
 			InMethod(`swapCursor(Landroid/database/Cursor;)V`,
-				// must follow pattern of previous (p0=BooksAdapter v0=CursorIndexContainer v1=column,index)
+				// must follow pattern of previous (p0=BooksAdapter p1=cursor v0=CursorIndexContainer v1=column,index)
+				MustContain(FixIndent("\n"+`
+					iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;
+
+					const-string v1, "creator"
+				`)),
 				ReplaceStringAppend(
 					FixIndent("\n"+`
-						iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;
-
-						const-string v1, "creator"
-
 						invoke-interface {p1, v1}, Landroid/database/Cursor;->getColumnIndexOrThrow(Ljava/lang/String;)I
 
 						move-result v1
@@ -238,13 +239,8 @@ func init() {
 						iput v1, v0, Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;->seriesIndex:I
 					`),
 				),
-				// must follow pattern of previous (p0=BooksAdapter v0=CursorIndexContainer v1=column,index)
 				ReplaceStringAppend(
 					FixIndent("\n"+`
-						iget-object v0, p0, Lcom/faultexception/reader/BooksAdapter;->mIndexes:Lcom/faultexception/reader/BooksAdapter$CursorIndexContainer;
-
-						const-string v1, "creator"
-
 						invoke-interface {p1, v1}, Landroid/database/Cursor;->getColumnIndexOrThrow(Ljava/lang/String;)I
 
 						move-result v1
@@ -339,10 +335,14 @@ func init() {
 				"\n"+`.field private mSeries:Ljava/lang/String;`,
 			),
 			InMethod("readOpfFile(Ljava/lang/String;)V",
+				// v1=this, and v4 is still the opf ZipEntry here (it is overwritten with
+				// the InputStream by the invoke-virtual below)
+				MustContain(FixIndent("\n"+`
+					iget-object v7, v1, Lcom/faultexception/reader/book/EPubBook;->mZip:Lcom/faultexception/reader/util/ZipFileCompat;
+				`)),
 				ReplaceStringPrepend(
+					// note: no leading iget-object, since a .line directive may sit between it and the invoke
 					FixIndent("\n"+`
-						iget-object v7, v1, Lcom/faultexception/reader/book/EPubBook;->mZip:Lcom/faultexception/reader/util/ZipFileCompat;
-
 						invoke-virtual {v7, v4}, Lcom/faultexception/reader/util/ZipFileCompat;->getInputStream(Ljava/util/zip/ZipEntry;)Ljava/io/InputStream;
 
 						move-result-object v4
@@ -1283,40 +1283,39 @@ func init() {
 		),
 		PatchFile("smali/com/faultexception/reader/library/LibraryManager.smali",
 			InMethod("scanBookInternal(Ljava/lang/String;ILjava/lang/String;J)Lcom/faultexception/reader/library/LibraryManager$ScanResult;",
-				// must follow pattern of previous
+				// must follow pattern of previous (v0=Book v4=ContentValues p1=key v5=value)
+				MustContain(FixIndent("\n"+`
+					const-string p1, "creator"
+				`)),
 				ReplaceStringAppend(
 					FixIndent("\n"+`
 						invoke-virtual {v0}, Lcom/faultexception/reader/book/Book;->getCreator()Ljava/lang/String;
 
-						move-result-object p1
+						move-result-object v5
 
-						const-string v5, "creator"
-
-						invoke-virtual {v4, v5, p1}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+						invoke-virtual {v4, p1, v5}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
 					`),
 					FixIndent("\n"+`
+						const-string p1, "series_index"
 						invoke-virtual {v0}, Lcom/faultexception/reader/book/Book;->getSeriesIndex()Ljava/lang/String;
-						move-result-object p1
-						const-string v5, "series_index"
-						invoke-virtual {v4, v5, p1}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+						move-result-object v5
+						invoke-virtual {v4, p1, v5}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
 					`),
 				),
-				// must follow pattern of previous
+				// must follow pattern of previous (v0=Book v4=ContentValues p1=key v5=value)
 				ReplaceStringAppend(
 					FixIndent("\n"+`
 						invoke-virtual {v0}, Lcom/faultexception/reader/book/Book;->getCreator()Ljava/lang/String;
 
-						move-result-object p1
+						move-result-object v5
 
-						const-string v5, "creator"
-
-						invoke-virtual {v4, v5, p1}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+						invoke-virtual {v4, p1, v5}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
 					`),
 					FixIndent("\n"+`
+						const-string p1, "series"
 						invoke-virtual {v0}, Lcom/faultexception/reader/book/Book;->getSeries()Ljava/lang/String;
-						move-result-object p1
-						const-string v5, "series"
-						invoke-virtual {v4, v5, p1}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+						move-result-object v5
+						invoke-virtual {v4, p1, v5}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
 					`),
 				),
 			),

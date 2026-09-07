@@ -16,11 +16,10 @@ func NoSync() {
 		),
 		PatchFile("smali/com/faultexception/reader/sync/SyncSettingsFragment.smali",
 			InMethod("onCreatePreferences(Landroid/os/Bundle;Ljava/lang/String;)V",
+				// this is the only setVisible with these registers, and it's
+				// the last instruction of the :cond_0 before :goto_0
 				ReplaceStringAppend(
 					FixIndent(`
-						:cond_0
-						iget-object p1, p0, Lcom/faultexception/reader/sync/SyncSettingsFragment;->mProRequiredPref:Landroidx/preference/Preference;
-
 						invoke-virtual {p1, v2}, Landroidx/preference/Preference;->setVisible(Z)V
 					`),
 					FixIndent(`

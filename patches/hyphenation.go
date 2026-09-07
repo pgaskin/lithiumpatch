@@ -61,19 +61,12 @@ func init() {
 			),
 		),
 		PatchFile("smali/com/faultexception/reader/content/HtmlContentView.smali",
+			InMethod("setTextAlign(I)V",
+				MustContain(`iget-object v0, p0, Lcom/faultexception/reader/content/HtmlContentView;->mContentWebView:Lcom/faultexception/reader/content/HtmlContentWebView;`),
+				MustContain(`invoke-virtual {v0, p1}, Lcom/faultexception/reader/content/HtmlContentWebView;->setTextAlign(I)V`),
+			),
 			ReplaceStringPrepend(
-				FixIndent("\n"+`
-				.method public setTextAlign(I)V
-					.locals 1
-
-					.line 126
-					iget-object v0, p0, Lcom/faultexception/reader/content/HtmlContentView;->mContentWebView:Lcom/faultexception/reader/content/HtmlContentWebView;
-
-					invoke-virtual {v0, p1}, Lcom/faultexception/reader/content/HtmlContentWebView;->setTextAlign(I)V
-
-					return-void
-				.end method
-				`),
+				"\n"+`.method public setTextAlign(I)V`+"\n",
 				FixIndent("\n"+`
 				.method public setHyphenation(Z)V
 					.locals 1
@@ -92,26 +85,12 @@ func init() {
 				"\n"+`.field private mTextAlign:I`,
 				"\n"+`.field private mHyphenation:Z`,
 			),
+			InMethod("setTextAlign(I)V",
+				MustContain(`iget-object v0, p0, Lcom/faultexception/reader/content/EPubBookView;->mContentView:Lcom/faultexception/reader/content/ContentView;`),
+				MustContain(`invoke-virtual {v0, p1}, Lcom/faultexception/reader/content/ContentView;->setTextAlign(I)V`),
+			),
 			ReplaceStringPrepend(
-				FixIndent("\n"+`
-				.method public setTextAlign(I)V
-					.locals 1
-
-					.line 332
-					iput p1, p0, Lcom/faultexception/reader/content/EPubBookView;->mTextAlign:I
-
-					.line 333
-					iget-object v0, p0, Lcom/faultexception/reader/content/EPubBookView;->mContentView:Lcom/faultexception/reader/content/ContentView;
-
-					if-eqz v0, :cond_0
-
-					.line 334
-					invoke-virtual {v0, p1}, Lcom/faultexception/reader/content/ContentView;->setTextAlign(I)V
-
-					:cond_0
-					return-void
-				.end method
-				`),
+				"\n"+`.method public setTextAlign(I)V`+"\n",
 				FixIndent("\n"+`
 				.method public setHyphenation(Z)V
 					.locals 1
@@ -130,48 +109,13 @@ func init() {
 				"\n"+`.field private mTextAlign:I`,
 				"\n"+`.field private mHyphenation:Z`,
 			),
+			InMethod("setTextAlign(I)V",
+				MustContain(`iget-object v0, p0, Lcom/faultexception/reader/content/HtmlContentWebView;->mUrl:Ljava/lang/String;`),
+				MustContain(`iget-boolean v0, p0, Lcom/faultexception/reader/content/HtmlContentWebView;->mDisplaySettingsInjected:Z`),
+				MustContain(`invoke-virtual {p0, p1}, Lcom/faultexception/reader/content/HtmlContentWebView;->executeJavascript(Ljava/lang/String;)V`),
+			),
 			ReplaceStringPrepend(
-				FixIndent("\n"+`
-				.method public setTextAlign(I)V
-					.locals 2
-
-					.line 812
-					iput p1, p0, Lcom/faultexception/reader/content/HtmlContentWebView;->mTextAlign:I
-
-					.line 813
-					iget-object v0, p0, Lcom/faultexception/reader/content/HtmlContentWebView;->mUrl:Ljava/lang/String;
-
-					if-eqz v0, :cond_0
-
-					iget-boolean v0, p0, Lcom/faultexception/reader/content/HtmlContentWebView;->mDisplaySettingsInjected:Z
-
-					if-eqz v0, :cond_0
-
-					.line 814
-					new-instance v0, Ljava/lang/StringBuilder;
-
-					invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
-
-					const-string v1, "LithiumJs.setTextAlign("
-
-					invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-					invoke-virtual {v0, p1}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
-
-					const-string p1, ")"
-
-					invoke-virtual {v0, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-					invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-					move-result-object p1
-
-					invoke-virtual {p0, p1}, Lcom/faultexception/reader/content/HtmlContentWebView;->executeJavascript(Ljava/lang/String;)V
-
-					:cond_0
-					return-void
-				.end method
-				`),
+				"\n"+`.method public setTextAlign(I)V`+"\n",
 				FixIndent("\n"+`
 				.method public setHyphenation(Z)V
 					.locals 2
@@ -219,34 +163,9 @@ func init() {
 			InMethod("updateFeaturesForBookView()V",
 				ReplaceStringPrepend(
 					FixIndent("\n"+`
-						.line 619
 						iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity;->mBookView:Lcom/faultexception/reader/content/BookView;
 
 						const/4 v1, 0x1
-
-						invoke-virtual {v0, v1}, Lcom/faultexception/reader/content/BookView;->supportsFeature(I)Z
-
-						move-result v0
-
-						const/4 v1, 0x0
-
-						if-eqz v0, :cond_0
-
-						.line 620
-						iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity;->mPrefs:Landroid/content/SharedPreferences;
-
-						const/16 v2, 0x64
-
-						const-string v3, "textSize"
-
-						invoke-interface {v0, v3, v2}, Landroid/content/SharedPreferences;->getInt(Ljava/lang/String;I)I
-
-						move-result v0
-
-						.line 621
-						iget-object v2, p0, Lcom/faultexception/reader/ReaderActivity;->mBookView:Lcom/faultexception/reader/content/BookView;
-
-						invoke-virtual {v2, v0}, Lcom/faultexception/reader/content/BookView;->setTextSize(I)V
 					`),
 					FixIndent("\n"+`
 						iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity;->mPrefs:Landroid/content/SharedPreferences;

@@ -3,7 +3,11 @@
 // Adds an option to disable page turn animation (useful for e-ink devices).
 package patches
 
-import . "github.com/pgaskin/lithiumpatch/patches/patchdef"
+import (
+	"regexp"
+
+	. "github.com/pgaskin/lithiumpatch/patches/patchdef"
+)
 
 func init() {
 	Register("disableanimation",
@@ -36,16 +40,16 @@ func init() {
 				.end method
 				`),
 			),
-			InMethod("<init>(Landroid/content/Context;Lcom/faultexception/reader/content/ContentView$ContentClient;Lcom/faultexception/reader/book/EPubBook;)V",
+			InMethod("<init>(Landroid/content/Context;Lcom/faultexception/reader/content/HtmlContentView;Lcom/faultexception/reader/content/ContentView$ContentClient;Lcom/faultexception/reader/book/EPubBook;)V",
 				ReplaceStringAppend(
 					"\n"+"    invoke-direct {p0, p1}, Landroid/webkit/WebView;-><init>(Landroid/content/Context;)V",
 					"\n"+"    invoke-direct {p0, p1}, Lcom/faultexception/reader/content/HtmlContentWebView;->initNoPageTurnAnimation(Landroid/content/Context;)V",
 				),
 			),
 			InMethod("setPage(IZ)V", // the second argument is true if animating
-				ReplaceStringAppend(
-					`    .locals 5`,
-					FixIndent("\n"+`
+				ReplaceStringRe(
+					regexp.MustCompile(`(?m)^    \.locals \d+$`),
+					"${0}"+FixIndent("\n"+`
 						iget-boolean v0, p0, Lcom/faultexception/reader/content/HtmlContentWebView;->mNoPageTurnAnimation:Z
 						if-eqz v0, :page_turn_animation_ok
 						const/4 p2, 0x0
@@ -84,23 +88,23 @@ func init() {
 				),
 			),
 			InMethod("doOverScroll(I)V",
-				// this is a terrible hack, but it works well enough and reduces code duplication
+				// this is a terrible hack, but it works well enough and reduces
+				// code duplication
+				//
+				// v3 is the OverScrollView$2 animator listener which does the
+				// actual page turn in onAnimationEnd, and v0 unused after the
+				// addListener call (it gets set with the animator)
 				MustContain(FixIndent("\n"+`
-					.line 196
-					:goto_0
-					iget-object v2, p0, Lcom/faultexception/reader/widget/OverScrollView;->mOverScrollPullAnimation:Landroid/animation/ValueAnimator;
-
 					new-instance v3, Lcom/faultexception/reader/widget/OverScrollView$2;
 
 					invoke-direct {v3, p0, v0}, Lcom/faultexception/reader/widget/OverScrollView$2;-><init>(Lcom/faultexception/reader/widget/OverScrollView;I)V
 
 					invoke-virtual {v2, v3}, Landroid/animation/ValueAnimator;->addListener(Landroid/animation/Animator$AnimatorListener;)V
 
-					.line 207
 					iget-object v0, p0, Lcom/faultexception/reader/widget/OverScrollView;->mOverScrollPullAnimation:Landroid/animation/ValueAnimator;
 				`)),
-				ReplaceStringPrepend(
-					"\n"+`    .line 207`,
+				ReplaceStringAppend(
+					"\n"+`    invoke-virtual {v2, v3}, Landroid/animation/ValueAnimator;->addListener(Landroid/animation/Animator$AnimatorListener;)V`,
 					FixIndent("\n"+`
 						iget-boolean v0, p0, Lcom/faultexception/reader/widget/OverScrollView;->mNoPageTurnAnimation:Z
 						if-eqz v0, :page_turn_animation_ok

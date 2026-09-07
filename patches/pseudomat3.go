@@ -58,22 +58,22 @@ func init() {
 				"res/layout/books_grid_item.xml",
 			},
 			ReplaceString(
-				`app:cardCornerRadius="4.0dip"`,
-				`app:cardCornerRadius="12.0dip" app:cardElevation="0dp"`,
+				`app:cardCornerRadius="4.0dp"`,
+				`app:cardCornerRadius="12.0dp" app:cardElevation="0dp"`,
 			),
 			ReplaceString(
-				`android:layout_margin="5.0dip"`,
-				`android:layout_margin="8.0dip"`,
+				`android:layout_margin="5.0dp"`,
+				`android:layout_margin="8.0dp"`,
 			),
 		),
 		PatchFile("smali/com/faultexception/reader/BooksFragment.smali",
 			MustContain(
 				FixIndent("\n"+`
-					.line 165
 					iget-object p1, p0, Lcom/faultexception/reader/BooksFragment;->mContext:Landroid/content/Context;
 
 					const/16 v0, 0xa
 
+					.line 167
 					invoke-static {p1, v0}, Lcom/faultexception/reader/util/Utils;->dpToPx(Landroid/content/Context;I)I
 
 					move-result p1
@@ -81,7 +81,6 @@ func init() {
 			),
 			MustContain(
 				FixIndent("\n"+`
-					.line 167
 					invoke-virtual {v2, v3}, Landroid/content/res/Resources;->getDimension(I)F
 
 					move-result v2
@@ -90,24 +89,20 @@ func init() {
 
 					add-int/2addr v2, p1
 
-					.line 166
+					.line 168
 					invoke-virtual {v0, v2}, Lcom/faultexception/reader/widget/AutoFitRecyclerView;->setSpanWidth(I)V
 				`),
 			),
 			ReplaceString(
 				FixIndent("\n"+`
+					iget-object p1, p0, Lcom/faultexception/reader/BooksFragment;->mContext:Landroid/content/Context;
+
 					const/16 v0, 0xa
-
-					invoke-static {p1, v0}, Lcom/faultexception/reader/util/Utils;->dpToPx(Landroid/content/Context;I)I
-
-					move-result p1
 				`),
 				FixIndent("\n"+`
+					iget-object p1, p0, Lcom/faultexception/reader/BooksFragment;->mContext:Landroid/content/Context;
+
 					const/16 v0, `+strconv.Itoa(8*2)+`
-
-					invoke-static {p1, v0}, Lcom/faultexception/reader/util/Utils;->dpToPx(Landroid/content/Context;I)I
-
-					move-result p1
 				`),
 			),
 		),
@@ -116,7 +111,6 @@ func init() {
 			InMethod("applyChromeColor()V",
 				ReplaceString(
 					FixIndent("\n"+`
-						.line 512
 						invoke-static {v0}, Landroid/graphics/Color;->blue(I)I
 
 						move-result v4
@@ -127,7 +121,7 @@ func init() {
 
 						float-to-int v2, v4
 
-						.line 510
+						.line 535
 						invoke-static {v1, v3, v2}, Landroid/graphics/Color;->rgb(III)I
 
 						move-result v1

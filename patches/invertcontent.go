@@ -3,7 +3,11 @@
 // Optionally invert the color (preserving the hue) for FXL books.
 package patches
 
-import . "github.com/pgaskin/lithiumpatch/patches/patchdef"
+import (
+	"regexp"
+
+	. "github.com/pgaskin/lithiumpatch/patches/patchdef"
+)
 
 func init() {
 	Register("invertcontent",
@@ -26,23 +30,23 @@ func init() {
 			"res/layout-v17/fragment_display_settings.xml",
 		}, ReplaceStringAppend(
 			FixIndent(`
-					<LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@id/text_align" android:paddingLeft="24.0dip" android:paddingRight="8.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content">
-						<LinearLayout android:gravity="center_vertical" android:orientation="vertical" android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_weight="1.0">
+					<LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@id/text_align" android:paddingLeft="24.0dp" android:paddingRight="8.0dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+						<LinearLayout android:gravity="center_vertical" android:orientation="vertical" android:layout_width="0.0dp" android:layout_height="wrap_content" android:layout_weight="1.0">
 							<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/display_settings_text_align" style="@style/DisplaySettingsHeader" />
 							<TextView android:id="@id/text_align_value" android:layout_width="wrap_content" android:layout_height="wrap_content" style="@style/DisplaySettingsValue" />
 						</LinearLayout>
-						<ImageButton android:id="@id/text_align_start" android:background="@drawable/action_ripple" android:padding="16.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_align_start" android:contentDescription="@string/display_settings_text_align_start" app:tint="@color/display_settings_control_color_selector" />
-						<ImageButton android:id="@id/text_align_justify" android:background="@drawable/action_ripple" android:padding="16.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_align_justify" android:contentDescription="@string/display_settings_text_align_justify" app:tint="@color/display_settings_control_color_selector" />
+						<ImageButton android:id="@id/text_align_start" android:background="@drawable/action_ripple" android:padding="16.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_align_start" android:contentDescription="@string/display_settings_text_align_start" app:tint="@color/display_settings_control_color_selector" />
+						<ImageButton android:id="@id/text_align_justify" android:background="@drawable/action_ripple" android:padding="16.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_align_justify" android:contentDescription="@string/display_settings_text_align_justify" app:tint="@color/display_settings_control_color_selector" />
 					</LinearLayout>
 			`),
 			FixIndent(`
-					<LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@id/content_invert" android:paddingLeft="24.0dip" android:paddingRight="8.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content">
-						<LinearLayout android:gravity="center_vertical" android:orientation="vertical" android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_weight="1.0">
+					<LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@id/content_invert" android:paddingLeft="24.0dp" android:paddingRight="8.0dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+						<LinearLayout android:gravity="center_vertical" android:orientation="vertical" android:layout_width="0.0dp" android:layout_height="wrap_content" android:layout_weight="1.0">
 							<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Invert" style="@style/DisplaySettingsHeader" />
 							<TextView android:id="@id/content_invert_value" android:layout_width="wrap_content" android:layout_height="wrap_content" style="@style/DisplaySettingsValue" />
 						</LinearLayout>
-						<ImageButton android:id="@id/content_invert_image" android:background="@drawable/action_ripple" android:padding="16.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_image_24dp" android:contentDescription="Images" app:tint="@color/display_settings_control_color_selector" />
-						<ImageButton android:id="@id/content_invert_page" android:background="@drawable/action_ripple" android:padding="16.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_article_24dp" android:contentDescription="Page" app:tint="@color/display_settings_control_color_selector" />
+						<ImageButton android:id="@id/content_invert_image" android:background="@drawable/action_ripple" android:padding="16.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_image_24dp" android:contentDescription="Images" app:tint="@color/display_settings_control_color_selector" />
+						<ImageButton android:id="@id/content_invert_page" android:background="@drawable/action_ripple" android:padding="16.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_article_24dp" android:contentDescription="Page" app:tint="@color/display_settings_control_color_selector" />
 					</LinearLayout>
 			`),
 		)),
@@ -58,29 +62,8 @@ func init() {
 		PatchFile("smali/com/faultexception/reader/ReaderActivity.smali",
 			InMethod("updateFeaturesForBookView()V",
 				ReplaceStringAppend(
-					// margin is always applied
+					// after the margin, which is always applied (no supportsFeature)
 					FixIndent(`
-						:goto_0
-						iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity;->mBookView:Lcom/faultexception/reader/content/BookView;
-
-						iget-object v2, p0, Lcom/faultexception/reader/ReaderActivity;->mPrefs:Landroid/content/SharedPreferences;
-
-						invoke-virtual {p0}, Lcom/faultexception/reader/ReaderActivity;->getResources()Landroid/content/res/Resources;
-
-						move-result-object v3
-
-						const v4, 0x7f0a0006
-
-						invoke-virtual {v3, v4}, Landroid/content/res/Resources;->getInteger(I)I
-
-						move-result v3
-
-						const-string v4, "margin"
-
-						invoke-interface {v2, v4, v3}, Landroid/content/SharedPreferences;->getInt(Ljava/lang/String;I)I
-
-						move-result v2
-
 						invoke-virtual {v0, v2}, Lcom/faultexception/reader/content/BookView;->setMargin(I)V
 					`),
 					FixIndent(`
@@ -168,10 +151,6 @@ func init() {
 				ReplaceStringPrepend(
 					FixIndent(`
 						iget-object v0, p0, Lcom/faultexception/reader/DisplaySettingsFragment;->mTextAlignView:Landroid/view/View;
-
-						const/16 v4, 0x10
-
-						invoke-direct {p0, v0, v4}, Lcom/faultexception/reader/DisplaySettingsFragment;->setVisibilityForFeature(Landroid/view/View;I)V
 					`),
 					FixIndent(`
 						iget-object v0, p0, Lcom/faultexception/reader/DisplaySettingsFragment;->mContentInvertView:Landroid/view/View;
@@ -251,11 +230,9 @@ func init() {
 				),
 			),
 			InMethod("onClick(Landroid/view/View;)V",
-				ReplaceStringAppend(
-					FixIndent(`
-						.locals 8
-					`),
-					FixIndent(`
+				ReplaceStringRe(
+					regexp.MustCompile(`(?m)^    \.locals \d+$`),
+					"${0}"+FixIndent("\n"+`
 						invoke-direct {p0, p1}, Lcom/faultexception/reader/DisplaySettingsFragment;->onClickContentInvert(Landroid/view/View;)V
 					`),
 				),
@@ -342,50 +319,36 @@ func init() {
 		),
 
 		PatchFile("smali/com/faultexception/reader/ReaderActivity$7.smali",
-			ReplaceStringAppend(
+			InMethod("onTextAlignChanged(I)V",
+				// access$1000 is the synthetic getter for ReaderActivity.mBookView
+				MustContain(
+					FixIndent(`
+						invoke-static {v0}, Lcom/faultexception/reader/ReaderActivity;->access$1000(Lcom/faultexception/reader/ReaderActivity;)Lcom/faultexception/reader/content/BookView;
+					`),
+				),
+			),
+			ReplaceStringPrepend(
 				FixIndent(`
 				.method public onTextAlignChanged(I)V
-					.locals 1
-
-					.line 1873
-					iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity$7;->this$0:Lcom/faultexception/reader/ReaderActivity;
-
-					invoke-static {v0}, Lcom/faultexception/reader/ReaderActivity;->access$1100(Lcom/faultexception/reader/ReaderActivity;)Lcom/faultexception/reader/content/BookView;
-
-					move-result-object v0
-
-					if-eqz v0, :cond_0
-
-					.line 1874
-					iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity$7;->this$0:Lcom/faultexception/reader/ReaderActivity;
-
-					invoke-static {v0}, Lcom/faultexception/reader/ReaderActivity;->access$1100(Lcom/faultexception/reader/ReaderActivity;)Lcom/faultexception/reader/content/BookView;
-
-					move-result-object v0
-
-					invoke-virtual {v0, p1}, Lcom/faultexception/reader/content/BookView;->setTextAlign(I)V
-
-					:cond_0
-					return-void
-				.end method
 				`),
 				FixIndent(`
 				.method public onContentInvertChanged(Ljava/lang/String;)V
 					.locals 1
 
 					iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity$7;->this$0:Lcom/faultexception/reader/ReaderActivity;
-					invoke-static {v0}, Lcom/faultexception/reader/ReaderActivity;->access$1100(Lcom/faultexception/reader/ReaderActivity;)Lcom/faultexception/reader/content/BookView;
+					invoke-static {v0}, Lcom/faultexception/reader/ReaderActivity;->access$1000(Lcom/faultexception/reader/ReaderActivity;)Lcom/faultexception/reader/content/BookView;
 					move-result-object v0
 					if-eqz v0, :cond_0
 
 					iget-object v0, p0, Lcom/faultexception/reader/ReaderActivity$7;->this$0:Lcom/faultexception/reader/ReaderActivity;
-					invoke-static {v0}, Lcom/faultexception/reader/ReaderActivity;->access$1100(Lcom/faultexception/reader/ReaderActivity;)Lcom/faultexception/reader/content/BookView;
+					invoke-static {v0}, Lcom/faultexception/reader/ReaderActivity;->access$1000(Lcom/faultexception/reader/ReaderActivity;)Lcom/faultexception/reader/content/BookView;
 					move-result-object v0
 					invoke-virtual {v0, p1}, Lcom/faultexception/reader/content/BookView;->setContentInvert(Ljava/lang/String;)V
 
 					:cond_0
 					return-void
 				.end method
+
 				`),
 			),
 		),
@@ -413,25 +376,9 @@ func init() {
 				"\n"+`.field private mTextAlign:I`,
 				"\n"+`.field private mContentInvert:Ljava/lang/String;`,
 			),
-			ReplaceStringAppend(
+			ReplaceStringPrepend(
 				FixIndent(`
 				.method public setTextAlign(I)V
-					.locals 1
-
-					.line 332
-					iput p1, p0, Lcom/faultexception/reader/content/EPubBookView;->mTextAlign:I
-
-					.line 333
-					iget-object v0, p0, Lcom/faultexception/reader/content/EPubBookView;->mContentView:Lcom/faultexception/reader/content/ContentView;
-
-					if-eqz v0, :cond_0
-
-					.line 334
-					invoke-virtual {v0, p1}, Lcom/faultexception/reader/content/ContentView;->setTextAlign(I)V
-
-					:cond_0
-					return-void
-				.end method
 				`),
 				FixIndent(`
 				.method public setContentInvert(Ljava/lang/String;)V
@@ -447,6 +394,7 @@ func init() {
 					:cond_0
 					return-void
 				.end method
+
 				`),
 			),
 		),
@@ -470,18 +418,9 @@ func init() {
 		),
 
 		PatchFile("smali/com/faultexception/reader/content/HtmlContentView.smali",
-			ReplaceStringAppend(
+			ReplaceStringPrepend(
 				FixIndent(`
 				.method public setTextAlign(I)V
-					.locals 1
-
-					.line 126
-					iget-object v0, p0, Lcom/faultexception/reader/content/HtmlContentView;->mContentWebView:Lcom/faultexception/reader/content/HtmlContentWebView;
-
-					invoke-virtual {v0, p1}, Lcom/faultexception/reader/content/HtmlContentWebView;->setTextAlign(I)V
-
-					return-void
-				.end method
 				`),
 				FixIndent(`
 				.method public setContentInvert(Ljava/lang/String;)V
@@ -490,6 +429,7 @@ func init() {
 					invoke-virtual {v0, p1}, Lcom/faultexception/reader/content/HtmlContentWebView;->setContentInvert(Ljava/lang/String;)V
 					return-void
 				.end method
+
 				`),
 			),
 		),
@@ -514,47 +454,9 @@ func init() {
 					invoke-virtual {v5, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 				`),
 			),
-			ReplaceStringAppend(
+			ReplaceStringPrepend(
 				FixIndent(`
 				.method public setTextAlign(I)V
-					.locals 2
-
-					.line 812
-					iput p1, p0, Lcom/faultexception/reader/content/HtmlContentWebView;->mTextAlign:I
-
-					.line 813
-					iget-object v0, p0, Lcom/faultexception/reader/content/HtmlContentWebView;->mUrl:Ljava/lang/String;
-
-					if-eqz v0, :cond_0
-
-					iget-boolean v0, p0, Lcom/faultexception/reader/content/HtmlContentWebView;->mDisplaySettingsInjected:Z
-
-					if-eqz v0, :cond_0
-
-					.line 814
-					new-instance v0, Ljava/lang/StringBuilder;
-
-					invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
-
-					const-string v1, "LithiumJs.setTextAlign("
-
-					invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-					invoke-virtual {v0, p1}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
-
-					const-string p1, ")"
-
-					invoke-virtual {v0, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-					invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-					move-result-object p1
-
-					invoke-virtual {p0, p1}, Lcom/faultexception/reader/content/HtmlContentWebView;->executeJavascript(Ljava/lang/String;)V
-
-					:cond_0
-					return-void
-				.end method
 				`),
 				FixIndent(`
 				.method public setContentInvert(Ljava/lang/String;)V
@@ -581,6 +483,7 @@ func init() {
 					:cond_0
 					return-void
 				.end method
+
 				`),
 			),
 		),

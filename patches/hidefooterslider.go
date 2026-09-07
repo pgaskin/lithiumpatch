@@ -3,7 +3,11 @@
 // Optionally hide the reading view footer slider to prevent accidental touches.
 package patches
 
-import . "github.com/pgaskin/lithiumpatch/patches/patchdef"
+import (
+	"regexp"
+
+	. "github.com/pgaskin/lithiumpatch/patches/patchdef"
+)
 
 func init() {
 	Register("hidefooterslider",
@@ -43,15 +47,11 @@ func init() {
                 .end method
                 `),
 			),
-			// call helper after SeekBar listener is set (robust minimal anchor)
+			// call helper after SeekBar listener is set
 			InMethod("onCreate(Landroid/os/Bundle;)V",
-				ReplaceStringAppend(
-					FixIndent("\n"+`
-						invoke-virtual {v2, v0}, Landroid/widget/SeekBar;->setOnSeekBarChangeListener(Landroid/widget/SeekBar$OnSeekBarChangeListener;)V
-					`),
-					FixIndent("\n"+`
-						invoke-direct {v0}, Lcom/faultexception/reader/ReaderActivity;->applyHideFooterSlider()V
-					`),
+				ReplaceStringRe(
+					regexp.MustCompile(`(?m)^    invoke-virtual \{[vp]\d+, ([vp]\d+)\}, Landroid/widget/SeekBar;->setOnSeekBarChangeListener\(Landroid/widget/SeekBar\$OnSeekBarChangeListener;\)V$`),
+					"${0}\n\n"+`    invoke-direct {${1}}, Lcom/faultexception/reader/ReaderActivity;->applyHideFooterSlider()V`,
 				),
 			),
 			// also apply on resume so changes from settings take effect immediately

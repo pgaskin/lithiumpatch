@@ -13,21 +13,20 @@ func init() {
 		// note: padding/gap is 5
 		PatchFile("res/values-sw364dp/dimens.xml",
 			ReplaceString(
-				`<dimen name="bookshelf_cover_width">160.0dip</dimen>`,
-				`<dimen name="bookshelf_cover_width">115.0dip</dimen>`,
+				`<dimen name="bookshelf_cover_width">160.0dp</dimen>`,
+				`<dimen name="bookshelf_cover_width">115.0dp</dimen>`,
 			),
 		),
 		PatchFile("res/values-sw480dp/dimens.xml",
 			ReplaceString(
-				`<dimen name="bookshelf_cover_width">180.0dip</dimen>`,
-				`<dimen name="bookshelf_cover_width">115.0dip</dimen>`,
+				`<dimen name="bookshelf_cover_width">180.0dp</dimen>`,
+				`<dimen name="bookshelf_cover_width">115.0dp</dimen>`,
 			),
 		),
 		// the base width to determine the number of columns is set in code like AutoFitRecyclerView.setSpanWidth(bookshelf_cover_width)
 		PatchFile("smali/com/faultexception/reader/BooksFragment.smali",
 			MustContain(
 				FixIndent("\n"+`
-					.line 167
 					invoke-virtual {v2, v3}, Landroid/content/res/Resources;->getDimension(I)F
 				
 					move-result v2
@@ -36,7 +35,7 @@ func init() {
 				
 					add-int/2addr v2, p1
 				
-					.line 166
+					.line 168
 					invoke-virtual {v0, v2}, Lcom/faultexception/reader/widget/AutoFitRecyclerView;->setSpanWidth(I)V
 				`),
 			),
@@ -45,11 +44,11 @@ func init() {
 		PatchFile("res/layout/books_grid_item.xml",
 			ReplaceString(
 				`<androidx.cardview.widget.CardView android:layout_width="wrap_content" android:layout_height="wrap_content"`,
-				`<androidx.cardview.widget.CardView android:layout_width="fill_parent" android:layout_height="wrap_content"`,
+				`<androidx.cardview.widget.CardView android:layout_width="match_parent" android:layout_height="wrap_content"`,
 			),
 			ReplaceString(
 				"\n"+`        <FrameLayout android:id="@id/cover_container" android:layout_width="@dimen/bookshelf_cover_width" android:layout_height="@dimen/bookshelf_cover_height">`,
-				"\n"+`        <com.faultexception.reader.widget.CoverFrameLayout android:id="@id/cover_container" android:layout_width="fill_parent" android:layout_height="wrap_content">`,
+				"\n"+`        <com.faultexception.reader.widget.CoverFrameLayout android:id="@id/cover_container" android:layout_width="match_parent" android:layout_height="wrap_content">`,
 			),
 			ReplaceString(
 				"\n"+`        </FrameLayout>`,
@@ -110,6 +109,7 @@ func init() {
 						:cond_2
 						iget p1, p0, Lcom/faultexception/reader/widget/AutoFitRecyclerView;->mPaddingLeft:I
 
+						.line 56
 						invoke-virtual {p0}, Lcom/faultexception/reader/widget/AutoFitRecyclerView;->getPaddingTop()I
 
 						move-result p2

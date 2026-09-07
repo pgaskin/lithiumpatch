@@ -18,10 +18,10 @@ func seriesdrawer() {
 		// based on empty_category
 		WriteFileString("res/layout/empty_series.xml", FixIndent(`
 		<?xml version="1.0" encoding="utf-8"?>
-		<LinearLayout android:gravity="center" android:orientation="vertical" android:padding="20.0dip" android:clipToPadding="false" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_marginBottom="?actionBarSize" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+		<LinearLayout android:gravity="center" android:orientation="vertical" android:padding="20.0dp" android:clipToPadding="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="?actionBarSize" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
 			<ImageView android:id="@id/empty_image" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_library_empty" android:contentDescription="@null" app:tint="?android:textColorPrimary" />
-			<TextView android:textSize="20.0sp" android:textColor="?android:textColorPrimary" android:gravity="center" android:id="@id/empty_title" android:layout_width="300.0dip" android:layout_height="wrap_content" android:text="No books in series" android:fontFamily="sans-serif-condensed" />
-			<Button android:id="@id/empty_goto_all" android:paddingLeft="24.0dip" android:paddingRight="24.0dip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="24.0dip" android:text="@string/no_books_goto_all" />
+			<TextView android:textSize="20.0sp" android:textColor="?android:textColorPrimary" android:gravity="center" android:id="@id/empty_title" android:layout_width="300.0dp" android:layout_height="wrap_content" android:text="No books in series" android:fontFamily="sans-serif-condensed" />
+			<Button android:id="@id/empty_goto_all" android:paddingLeft="24.0dp" android:paddingRight="24.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="24.0dp" android:text="@string/no_books_goto_all" />
 		</LinearLayout>
 		`)),
 		DefineR("smali/com/faultexception/reader", "layout", "empty_series"),
@@ -497,8 +497,6 @@ func seriesdrawer() {
 			InMethod("onItemClick(Landroid/widget/AdapterView;Landroid/view/View;IJ)V",
 				ReplaceStringAppend(
 					FixIndent("\n"+`
-						iget-object p1, p0, Lcom/faultexception/reader/MainDrawerFragment;->mAdapter:Lcom/faultexception/reader/util/adapters/MultiAdapter;
-
 						invoke-virtual {p1, p3}, Lcom/faultexception/reader/util/adapters/MultiAdapter;->getProjection(I)Lcom/faultexception/reader/util/adapters/MultiAdapter$Projection;
 
 						move-result-object p1
@@ -546,13 +544,8 @@ func seriesdrawer() {
 
 		PatchFile("smali/com/faultexception/reader/MainActivity.smali",
 			InMethod("onCreate(Landroid/os/Bundle;)V",
+				MustContain(`const-string v3, "filter"`),
 				MustContain(FixIndent("\n"+`
-					const-string v3, "filter"
-
-					invoke-interface {v2, v3, v0}, Landroid/content/SharedPreferences;->getInt(Ljava/lang/String;I)I
-
-					move-result v2
-
 					if-eqz v2, :cond_4
 
 					if-eq v2, v1, :cond_3
@@ -563,27 +556,17 @@ func seriesdrawer() {
 
 					goto :goto_1
 
-					.line 182
 					:cond_2
 					iget-object v2, p0, Lcom/faultexception/reader/MainActivity;->mPrefs:Landroid/content/SharedPreferences;
 
-					const/4 v3, 0x0
+					const-string v3, "folder"
 
-					const-string v4, "folder"
-
-					.line 183
-					invoke-interface {v2, v4, v3}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-
-					move-result-object v2
-
+					const/4 v4, 0x0
+				`)),
+				MustContain(FixIndent("\n"+`
 					invoke-static {v2}, Lcom/faultexception/reader/BooksFragment;->newFolderInstance(Ljava/lang/String;)Landroidx/fragment/app/Fragment;
 
 					move-result-object v2
-
-					.line 182
-					invoke-virtual {p0, v2, v0}, Lcom/faultexception/reader/MainActivity;->switchToFragment(Landroidx/fragment/app/Fragment;Z)V
-
-					goto :goto_1
 				`)),
 				ReplaceStringAppend(
 					FixIndent("\n"+`
@@ -605,9 +588,9 @@ func seriesdrawer() {
 					FixIndent("\n"+`
 						:cond_2a
 						iget-object v2, p0, Lcom/faultexception/reader/MainActivity;->mPrefs:Landroid/content/SharedPreferences;
-						const v3, 0x0
-						const-string v4, "series"
-						invoke-interface {v2, v4, v3}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+						const-string v3, "series"
+						const/4 v4, 0x0
+						invoke-interface {v2, v3, v4}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 						move-result-object v2
 						invoke-static {v2}, Lcom/faultexception/reader/BooksFragment;->newSeriesInstance(Ljava/lang/String;)Landroidx/fragment/app/Fragment;
 						move-result-object v2
