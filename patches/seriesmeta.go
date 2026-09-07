@@ -20,6 +20,11 @@ func init() {
 		),
 		DefineR("smali/com/faultexception/reader", "id", "series"),
 		PatchFile("res/layout/books_grid_item.xml",
+			// fix empty space with different bg color under books with no series
+			ReplaceString(
+				"\n"+`        <LinearLayout android:orientation="vertical" android:id="@id/footer" android:padding="12.0dp" android:layout_width="match_parent" android:layout_height="wrap_content">`,
+				"\n"+`        <LinearLayout android:orientation="vertical" android:id="@id/footer" android:padding="12.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_weight="1">`,
+			),
 			ReplaceStringAppend(
 				"\n"+`            <TextView android:textSize="12.0sp" android:textColor="#fff" android:ellipsize="end" android:id="@id/creator" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif" />`,
 				"\n"+`            <TextView android:textSize="10.0sp" android:textColor="#fff" android:ellipsize="end" android:id="@id/series" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif"/>`,
