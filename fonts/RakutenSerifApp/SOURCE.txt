@@ -1,0 +1,4 @@
+Extracted from public Kobo firmware package:
+https://ereaderfiles.kobo.com/firmwares/kobo6/May2026/kobo-update-4.38.23697.zip
+Firmware index used:
+https://pgaskin.net/KoboStuff/kobofirmware.html

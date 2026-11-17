@@ -15,6 +15,8 @@ func init() {
 		// material you colors in most places
 		// https://github.com/material-components/material-components-android/blob/778a9f2a490394906e97881bb29ac491a64c23d7/docs/theming/Color.md?plain=1#L36
 		// TODO: maybe add light colors too?
+		// material you colors removed to favor premium dark theme
+		/*
 		WriteFileString("res/values-night-v31/colors.xml",
 			FixIndent(`
 			<?xml version="1.0" encoding="utf-8"?>
@@ -51,6 +53,7 @@ func init() {
 			</resources>
 			`),
 		),
+		*/
 		// flat and more rounded book items, slightly bigger margins
 		PatchFiles(
 			[]string{
@@ -59,7 +62,7 @@ func init() {
 			},
 			ReplaceString(
 				`app:cardCornerRadius="4.0dp"`,
-				`app:cardCornerRadius="12.0dp" app:cardElevation="0dp"`,
+				`app:cardCornerRadius="6.0dp" app:cardElevation="0dp"`,
 			),
 			ReplaceString(
 				`android:layout_margin="5.0dp"`,

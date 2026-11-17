@@ -4,3 +4,6 @@
 *.jks
 /dict/edgedict/*.db
 /build
+
+lithiumpatch
+

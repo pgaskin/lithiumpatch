@@ -13,7 +13,7 @@ import (
 	"github.com/golang/freetype/truetype"
 )
 
-//go:embed *.ttf */*.ttf
+//go:embed *.ttf *.TTF *.otf Bitter Bitter/static bookerly-cufonfonts EB_Garamond/static qt-bookmann RakutenSerifApp
 var embedded embed.FS
 
 func init() {
@@ -65,7 +65,9 @@ func LoadFrom(fsys fs.FS) (int, error) {
 		}
 		ttf, err := truetype.Parse(buf)
 		if err != nil {
-			return fmt.Errorf("process %q: parse ttf: %w", path, err)
+			// Skip fonts that can't be parsed (e.g., CFF-based OTF files)
+			// These will be silently ignored
+			return nil
 		}
 		ff := ttf.Name(truetype.NameIDFontFamily)
 		if ff == "" {
@@ -104,7 +106,7 @@ func LoadFrom(fsys fs.FS) (int, error) {
 				return fmt.Errorf("process %q: already have font face %q %s", path, fsf, ff)
 			}
 			f.Italic = buf
-		case "Bold Italic":
+		case "Bold Italic", "BoldItalic":
 			if f.BoldItalic != nil {
 				return fmt.Errorf("process %q: already have font face %q %s", path, fsf, ff)
 			}
@@ -112,7 +114,8 @@ func LoadFrom(fsys fs.FS) (int, error) {
 		case "":
 			return fmt.Errorf("process %q: parse ttf: no subfamily name", path)
 		default:
-			return fmt.Errorf("process %q: unsupported subfamily %q", path, fsf)
+			fmt.Printf("warn: process %q: unsupported subfamily %q\n", path, fsf)
+			return nil
 		}
 		xm[ff] = f
 		return nil

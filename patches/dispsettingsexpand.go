@@ -9,8 +9,8 @@ func init() {
 	Register("dispsettingsexpand",
 		PatchFile("res/layout/fragment_display_settings.xml",
 			ReplaceString(
-				`com.faultexception.reader.widget.ExpansionScrollView`,
-				`ScrollView`,
+				`<com.faultexception.reader.widget.ExpansionScrollView`,
+				`<ScrollView android:background="@drawable/bg_premium_popup"`,
 			),
 			ReplaceString(
 				`<Space android:id="@id/end_padding" android:visibility="gone"`,
@@ -23,12 +23,16 @@ func init() {
 			ReplaceString(
 				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dp" android:visibility="gone"`,
 				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dp" android:visibility="visible"`,
+			),
+			ReplaceString(
+				`</com.faultexception.reader.widget.ExpansionScrollView>`,
+				`</ScrollView>`,
 			),
 		),
 		PatchFile("res/layout-v17/fragment_display_settings.xml",
 			ReplaceString(
-				`com.faultexception.reader.widget.ExpansionScrollView`,
-				`ScrollView`,
+				`<com.faultexception.reader.widget.ExpansionScrollView`,
+				`<ScrollView android:background="@drawable/bg_premium_popup"`,
 			),
 			ReplaceString(
 				`<Space android:id="@id/end_padding" android:visibility="gone"`,
@@ -41,6 +45,10 @@ func init() {
 			ReplaceString(
 				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dp" android:visibility="gone"`,
 				`<LinearLayout android:orientation="vertical" android:id="@id/more_section" android:paddingBottom="8.0dp" android:visibility="visible"`,
+			),
+			ReplaceString(
+				`</com.faultexception.reader.widget.ExpansionScrollView>`,
+				`</ScrollView>`,
 			),
 		),
 		PatchFile(`smali/com/faultexception/reader/DisplaySettingsFragment.smali`,

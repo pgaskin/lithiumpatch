@@ -4,7 +4,7 @@
  */
 "use strict";
 
-var Dictionary = (function() {
+var Dictionary = (function () {
 
     /**
      * Symbol used by html to mark processed strings.
@@ -136,7 +136,7 @@ var Dictionary = (function() {
                     overflow: hidden;
                     margin: 16px auto;
                     border: 1px solid transparent;
-                    border-radius: 4px;
+                    border-radius: 16px;
                 }
                 #inner {
                     overscroll-behavior: contain;
@@ -168,7 +168,7 @@ var Dictionary = (function() {
                 this.#cssExtra.replace(css)
             }
 
-            this.#shadow = this.#root.attachShadow({mode: "open"})
+            this.#shadow = this.#root.attachShadow({ mode: "open" })
             this.#shadow.adoptedStyleSheets = [this.#cssBase, this.#cssExtra]
 
             this.#wrapper = this.#shadow.appendChild(document.createElement("div"))
@@ -183,12 +183,14 @@ var Dictionary = (function() {
             this.#content = this.#inner.appendChild(document.createElement("div"))
 
             const applyTheme = (dark = false, bg = undefined, fg = undefined) => {
-                this.#popup.style.setProperty("border-color", dark ? "rgba(255, 255, 255, .25)" : "rgba(0, 0, 0, .25)")
-                this.#popup.style.setProperty("box-shadow", dark ? "none" : "0 0 8px 0 rgba(0, 0, 0, .25)")
-                this.#popup.style.setProperty("background-color", bg !== undefined ? bg : dark ? "#333" : "#fff")
+                const darkBg = "#121212"
+                const darkBorder = "#333333"
+                this.#popup.style.setProperty("border-color", dark ? darkBorder : "rgba(0, 0, 0, .1)")
+                this.#popup.style.setProperty("box-shadow", dark ? "0 4px 24px rgba(0,0,0,0.5)" : "0 4px 24px rgba(0,0,0,0.15)")
+                this.#popup.style.setProperty("background-color", bg !== undefined ? bg : dark ? darkBg : "#fff")
                 this.#popup.style.setProperty("color", fg !== undefined ? fg : dark ? "#eee" : "#000")
-                this.#popup.style.setProperty("--popup-background", bg !== undefined ? bg : dark ? "#333" : "#fff")
-                this.#popup.style.setProperty("--popup-border-color", dark ? "rgba(255, 255, 255, .25)" : "rgba(0, 0, 0, .25)")
+                this.#popup.style.setProperty("--popup-background", bg !== undefined ? bg : dark ? darkBg : "#fff")
+                this.#popup.style.setProperty("--popup-border-color", dark ? darkBorder : "rgba(0, 0, 0, .1)")
             }
             applyTheme()
 
@@ -518,7 +520,7 @@ var Dictionary = (function() {
             const sel = this.#deepSelectionRootShadow?.getSelection
                 ? this.#deepSelectionRootShadow.getSelection() // non-standard, only supported on chrome
                 : window.getSelection();
-            
+
             // ensure we have a selection
             if (!sel?.rangeCount) {
                 return
@@ -571,11 +573,11 @@ var Dictionary = (function() {
                 li.dataset.term = ws[i]
                 li.textContent = ws[i] // TODO: show source dicts? ws.get(sws[i])
             }
-            for (let i = ul.children.length-1; i >= ws.length; i--) {
+            for (let i = ul.children.length - 1; i >= ws.length; i--) {
                 ul.children[i].remove()
             }
             if (ul.children.length) {
-                ul.children[0].scrollIntoView?.({behavior: "instant", block: "nearest", inline: "nearest"})
+                ul.children[0].scrollIntoView?.({ behavior: "instant", block: "nearest", inline: "nearest" })
             }
         }
 
@@ -690,7 +692,8 @@ var Dictionary = (function() {
             padding: 8px;
             font-weight: inherit;
             background: var(--popup-background);
-            border-bottom: 1px solid var(--popup-border-color);
+            border-bottom: 0;
+            padding-bottom: 12px;
         }
         aside.lookup > ul {
             list-style-type: none;
@@ -837,7 +840,7 @@ var Dictionary = (function() {
         </section>
     `).join("")
 
-    import(init.dict).then(({default: dictionary, Dictionary: Dictionary}) => {
+    import(init.dict).then(({ default: dictionary, Dictionary: Dictionary }) => {
         let dictSettle // timer
         let dictSem // promise
         let dictClientRect // function -> rect
@@ -963,7 +966,7 @@ var Dictionary = (function() {
                                 } catch (ex) {
                                     throw new Error(`load ${n}: ${ex}`)
                                 }
-                                acDicts.push({n, d})
+                                acDicts.push({ n, d })
                                 try {
                                     var r = await d.query(tt, true)
                                 } catch (ex) {
@@ -1039,22 +1042,22 @@ var Dictionary = (function() {
 
             // extend the range backward until it matches word beginning
             while ((rng.startOffset > 0) && rng.toString().match(re)) {
-                rng.setStart(anchorNode, rng.startOffset-1)
+                rng.setStart(anchorNode, rng.startOffset - 1)
             }
 
             // restore the valid word match after overshooting
             if (!rng.toString().match(re)) {
-                rng.setStart(anchorNode, rng.startOffset+1)
+                rng.setStart(anchorNode, rng.startOffset + 1)
             }
 
             // extend the range forward until it matches word ending
             while ((rng.endOffset < anchorNode.length) && rng.toString().match(re)) {
-                rng.setEnd(anchorNode, rng.endOffset+1)
+                rng.setEnd(anchorNode, rng.endOffset + 1)
             }
 
             // restore the valid word match after overshooting
             if (!rng.toString().match(re)) {
-                rng.setEnd(anchorNode, rng.endOffset-1)
+                rng.setEnd(anchorNode, rng.endOffset - 1)
             }
 
             // ignore it if it there's nothing left
