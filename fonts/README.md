@@ -29,10 +29,6 @@ The following files cannot be used and are ignored during build:
 ### WOFF2 files (not supported):
 - `Anthropic-serif.woff2` (TTF version available: `Anthropic-serif.ttf`)
 
-### Missing Required Regular Variant:
-- `Bastarda.ttf` - Only has "Medium" variant, needs "Regular"
-- `LUMOS.TTF` - Only has "Caps" variant, needs "Regular"
-
 ## Current Status
 
-**30 complete font families** are available and will be embedded in the APK (including EB Garamond, Leander, Aquifer, Essays1743, Roman Antique, and Subway Haze).
+**33 complete font families** are available and embedded in the APK (including EB Garamond, Leander, Aquifer, Essays1743, Roman Antique, Subway Haze, Bastarda, Lumos, and Peaky Blinders).
