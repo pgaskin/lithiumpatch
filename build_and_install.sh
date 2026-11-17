@@ -3,8 +3,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-# Add common Go paths to PATH just in case
-export PATH=$HOME/Android/Sdk/build-tools/36.1.0:$HOME/sdk/go/bin:$PATH:/usr/local/go/bin:$HOME/go/bin
+# Add common Go and Android build-tools paths to PATH just in case
+export PATH=$HOME/.cache/codex-tools/build-tools/android-16:$HOME/Android/Sdk/build-tools/36.1.0:$HOME/sdk/go/bin:$PATH:/usr/local/go/bin:$HOME/go/bin
 
 echo "Checking for Go..."
 if ! command -v go &> /dev/null; then
