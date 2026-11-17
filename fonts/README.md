@@ -35,4 +35,4 @@ The following files cannot be used and are ignored during build:
 
 ## Current Status
 
-**26 complete font families** are available and will be embedded in the APK (including EB Garamond and Leander).
+**30 complete font families** are available and will be embedded in the APK (including EB Garamond, Leander, Aquifer, Essays1743, Roman Antique, and Subway Haze).
