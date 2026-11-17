@@ -15,6 +15,9 @@ fi
 echo "Generating assets..."
 go generate ./app
 
+echo "Verifying font tests..."
+go test ./fonts/...
+
 echo "Building patched APK..."
 INPUT_APK="app/$(sed -n 's/.*LithiumAPK[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/app.go)"
 OUTPUT_APK="${INPUT_APK%.apk}.patched.resigned.apk"
